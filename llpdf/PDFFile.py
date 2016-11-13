@@ -136,20 +136,40 @@ class PDFFile(object):
 				break
 			self._objs[(obj.objid, obj.gennum)] = obj
 
-	def _read_xref_table(self):
-		assert(self._f.readline() == b"xref")
-		entries = self._f.readline()
-		entrycnt = int(entries.decode("ascii").split()[1])
-		for i in range(entrycnt):
+	def _read_next_xref_batch(self):
+		pos = self._f.tell()
+		entries_hdr = self._f.readline()
+		entries_hdr = entries_hdr.decode("ascii").rstrip("\r\n").split()
+		if len(entries_hdr) != 2:
+			# XRef Table is at end or we cannot parse this.
+			self._f.seek(pos)
+			return False
+
+		(start_id, entry_cnt) = (int(entries_hdr[0]), int(entries_hdr[1]))
+		for i in range(entry_cnt):
 			self._f.readline()
+		return True
+
+	def _read_xref_table(self):
+		line = self._f.readline()
+		if line not in [ b"xref", b"xref\r" ]:
+			raise Exception("Expected XRef table to appear, but encountered %s." % (str(line)))
+
+		while True:
+			if not self._read_next_xref_batch():
+				return False
 
 	def _read_trailer(self):
-		assert(self._f.readline() == b"trailer")
+		line = self._f.readline()
+		if line not in [ b"trailer", b"trailer\r" ]:
+			raise Exception("Expected trailer to appear, but encountered %s." % (str(line)))
 		(trailer_data, delimiter) = self._f.read_until([ b"startxref\r\n", b"startxref\n" ])
-		trailer_data = trailer_data.decode("utf-8")
+		trailer_data = trailer_data.decode("latin1")
 		trailer = PDFParser.parse(trailer_data)
 		self._f.readline()
-		assert(self._f.readline() == b"%%EOF")
+		line = self._f.readline()
+		if line not in [ b"%%EOF", b"%%EOF\r" ]:
+			raise Exception("Expected end of file, but encountered %s." % (str(line)))
 		return trailer
 
 	def read_stream(self):

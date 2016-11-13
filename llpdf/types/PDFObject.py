@@ -28,16 +28,20 @@ from llpdf.img.PDFImage import PDFImage
 from .Comparable import Comparable
 
 class PDFObject(Comparable):
-	_OBJ_RE = re.compile("(?P<objid>\d+) (?P<gennum>\d+) obj")
+	_OBJ_RE = re.compile("^(?P<obj_header>(?P<objid>\d+)\s+(?P<gennum>\d+)\s+obj?)")
 
 	def __init__(self, objid, gennum, rawdata):
 		self._objid = objid
 		self._gennum = gennum
 		if rawdata is not None:
-			if rawdata.startswith(b"<<") and (b"stream\n" in rawdata):
+			if rawdata.startswith(b"<<") and ((b"stream\r\n" in rawdata) or (b"stream\n" in rawdata)):
+				line_offset = 0
 				offset = rawdata.find(b"stream\n")
+				if offset == -1:
+					line_offset = 1
+					offset = rawdata.find(b"stream\r\n")
 				content = rawdata[:offset]
-				self._stream = rawdata[offset + 7 : -11]
+				self._stream = rawdata[offset + 7 + line_offset : -(11 + line_offset)]
 			else:
 				content = rawdata
 				self._stream = None
@@ -103,14 +107,14 @@ class PDFObject(Comparable):
 		pos = f.tell()
 		header = f.readline()
 		header = header.decode("ascii")
-		result = cls._OBJ_RE.fullmatch(header)
+		result = cls._OBJ_RE.match(header)
 		if not result:
 			f.seek(pos)
 			return None
 		result = result.groupdict()
+		f.seek(pos + len(result["obj_header"]) + 1)
 		(objid, gennum) = (int(result["objid"]), int(result["gennum"]))
 		(obj_data, obj_end) = f.read_until([ b"endobj\r\n", b"endobj\n" ])
-
 		return cls(objid = objid, gennum = gennum, rawdata = obj_data)
 
 	@property

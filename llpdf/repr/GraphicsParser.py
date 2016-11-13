@@ -63,7 +63,7 @@ class GraphicsParser(tpg.VerboseParser):
 		token string '\([^()]*\)';
 		token hexstring '<[\na-fA-F0-9]*>'					$ _to_hexstring
 		token cmd134 '(SCN|scn|SC|sc)';
-		token cmd0 '(BT|ET|BI|ID|EI|q|Q|h|S|s|f|F|f\*|B|B\*|b|b\*|n|W|W\*|T\*)';
+		token cmd0 '(BT|ET|BI|ID|EI|W\*|T\*|f\*|B\*|b\*|q|Q|h|S|s|f|F|B|b|n|W)';
 		token cmd1 '(gs|CS|cs|sh|Do|Tj|TJ|Tc|Tw|Tz|TL|Tr|Ts|ri|w|J|j|M|i|G|g)';
 		token cmd2 '(Td|TD|Tf|d0|m|l|d)';
 		token cmd3 '(rg|RG)';

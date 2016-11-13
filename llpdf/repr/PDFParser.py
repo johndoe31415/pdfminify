@@ -90,9 +90,17 @@ class PDFParser(tpg.VerboseParser):
 
 
 def parse(text):
-#	print(text)
-	parser = PDFParser()
-	return parser(text)
+	try:
+		parser = PDFParser()
+		result = parser(text)
+	except (tpg.LexicalError, tpg.SyntacticError) as e:
+		print("-" * 120)
+		print(text)
+		print("-" * 120)
+		print(text.split("\n")[e.line - 1])
+		print((" " * (e.column - 1)) + "^")
+		raise
+	return result
 
 if __name__ == "__main__":
 	examples = [
