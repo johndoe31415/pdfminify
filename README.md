@@ -29,6 +29,12 @@ pdfminify is licensed under the GNU GPL v3 (except for external components as
 TPG, which has its own license). Later versions of the GPL are explicitly
 excluded.
 
+# Requirements
+pdfminify uses two external tools: file and convert (from ImageMagick). It uses
+the former to determine the width/height of image files and the latter to
+convert images from PNM (the internal format that pdfminify is capable of
+writing natively) to JPEG.
+
 # PDF reading/writing
 pdfminify uses its own PDF parser because for this particular purpose, neither
 PyPDF2 nor pdfrw (which I both tried to use) seem suitable. This PDF
