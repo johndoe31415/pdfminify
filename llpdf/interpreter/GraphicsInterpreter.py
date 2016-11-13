@@ -43,12 +43,6 @@ from llpdf.types.PDFName import PDFName
 #                                                                 [  c a_ + d c_         c b_ + d d_       0]
 #                                                                 [                                         ]
 #                                                                 [e a_ + f c_ + e_    e b_ + f d_ + f_    1]
-#> evalm(M&*Matrix([[x],[y],[1]]));
-#                                                                               [  a x + b y  ]
-#                                                                               [             ]
-#                                                                               [  c x + d y  ]
-#                                                                               [             ]
-#                                                                               [e x + f y + 1]
 
 ImageExtents = collections.namedtuple("ImageExtents", [ "x", "y", "width", "height" ])
 
