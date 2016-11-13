@@ -25,6 +25,7 @@ import re
 import zlib
 import enum
 import subprocess
+from tempfile import NamedTemporaryFile
 from .PnmPicture import PnmPicture
 from llpdf.types.PDFName import PDFName
 
@@ -95,30 +96,30 @@ class PDFImage(object):
 		if (self.imgtype == new_img_type) and (scale_factor == 1):
 			return self
 		pnm_image = self.get_pnm()
-		pnm_filename = "temp.pnm"
-		out_extension = {
-			PDFImageType.FlateDecode:	"pnm",
-			PDFImageType.DCTDecode:		"jpg",
-		}[new_img_type]
-		out_filename = "temp_out." + out_extension
-		pnm_image.writefile(pnm_filename)
 
-		cmd = [ "convert" ]
-		if scale_factor != 1:
-			cmd += [ "-scale", "%f%%" % (scale_factor * 100) ]
-		if new_img_type == PDFImageType.DCTDecode:
-			cmd += [ "-quality", str(quality) if (quality is not None) else "85" ]
-		cmd += [ "+repage", pnm_filename, out_filename ]
-		subprocess.check_call(cmd)
-		if out_extension == "pnm":
-			img = PnmPicture().readfile(out_filename)
-			imgdata = zlib.compress(img.data)
-		else:
-			with open(out_filename, "rb") as f:
-				imgdata = f.read()
-		(new_width, new_height) = self._get_image_width_height(out_filename)
-		image = PDFImage(new_width, new_height, imgdata, new_img_type)
-		return image
+		out_extension = {
+			PDFImageType.FlateDecode:	".pnm",
+			PDFImageType.DCTDecode:		".jpg",
+		}[new_img_type]
+		with NamedTemporaryFile(suffix = ".pnm") as orig_file, NamedTemporaryFile(suffix = out_extension) as resampled_file:
+			pnm_image.writefile(orig_file.name)
+
+			cmd = [ "convert" ]
+			if scale_factor != 1:
+				cmd += [ "-scale", "%f%%" % (scale_factor * 100) ]
+			if new_img_type == PDFImageType.DCTDecode:
+				cmd += [ "-quality", str(quality) if (quality is not None) else "85" ]
+			cmd += [ "+repage", orig_file.name, resampled_file.name ]
+			subprocess.check_call(cmd)
+			if new_img_type == PDFImageType.FlateDecode:
+				img = PnmPicture().readfile(resampled_file.name)
+				imgdata = zlib.compress(img.data)
+			else:
+				with open(resampled_file.name, "rb") as f:
+					imgdata = f.read()
+			(new_width, new_height) = self._get_image_width_height(resampled_file.name)
+			image = PDFImage(new_width, new_height, imgdata, new_img_type)
+			return image
 
 	def __len__(self):
 		return len(self._imgdata)
