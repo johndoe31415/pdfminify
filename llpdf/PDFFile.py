@@ -1,0 +1,159 @@
+#	pdfminify - Tool to minify PDF files.
+#	Copyright (C) 2016-2016 Johannes Bauer
+#
+#	This file is part of pdfminify.
+#
+#	pdfminify is free software; you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation; this program is ONLY licensed under
+#	version 3 of the License, later versions are explicitly excluded.
+#
+#	pdfminify is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with pdfminify; if not, write to the Free Software
+#	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+#	Johannes Bauer <JohannesBauer@gmx.de>
+#
+
+import re
+import zlib
+import collections
+
+from .types.PDFObject import PDFObject
+from .types.PDFName import PDFName
+from llpdf.repr import PDFParser, GraphicsParser
+from .FileRepr import StreamRepr
+
+class PDFFile(object):
+	def __init__(self, f):
+		self._raw_f = f
+		self._f = StreamRepr.from_file(f)
+		self._hdr_version = self._identify()
+		if self._hdr_version not in [ b"%PDF-1.4", b"%PDF-1.5", b"%PDF-1.6", b"%PDF-1.7" ]:
+			print("Warning: Header indicates %s, unknown if we can handle this." % (self._hdr_version.decode()))
+
+		self._objs = { }
+		self._trailer = None
+		self._read_objects()
+		self._read_xref_table()
+		self._trailer = self._read_trailer()
+
+	def _identify(self):
+		self._f.seek(0)
+		version = self._f.readline()
+		after_hdr = self._f.read(6)
+		assert(after_hdr[0] == ord("%"))
+		assert(all(value & 0x80 == 0x80 for value in after_hdr[ 1 : 5]))
+		return version
+
+	@property
+	def trailer(self):
+		return self._trailer
+
+	@property
+	def image_objects(self):
+		return [ obj for obj in self._objs.values() if obj.is_image ]
+
+	@property
+	def pattern_objects(self):
+		return [ obj for obj in self._objs.values() if obj.is_pattern ]
+
+	@property
+	def stream_objects(self):
+		return [ obj for obj in self._objs.values() if (obj.stream is not None) ]
+
+	def get_objects_that_reference(self, xref):
+		for obj in self.pattern_objects:
+			resources = obj.content.get(PDFName("/Resources"))
+			xobjects = resources.get(PDFName("/XObject"))
+			xrefs = set(xobjects.values())
+			if xref in xrefs:
+				yield obj
+
+	def get_extent_of_image(self, img_object):
+		print("Determining extent of %s" % (img_object))
+		for obj in self.get_objects_that_reference(img_object.xref):
+			if obj.is_pattern:
+				print("Referenced by pattern %s" % (obj), obj.content)
+				matrix = obj.content.get(PDFName("/Matrix"))
+				bbox = obj.content.get(PDFName("/BBox"))
+				(scalex, scaley) = (matrix[0], matrix[3])
+				(width, height) = (bbox[2] - bbox[0], bbox[3] - bbox[1])
+				#return (width * scalex, height * scaley)
+				return (width, height)
+			else:
+				print("Cannot determine phyiscal extents of image, scaling probably done in page code :-(")
+
+	def delete_object(self, objid, gennum):
+		key = (objid, gennum)
+		if key in self._objs:
+			del self._objs[key]
+
+	@property
+	def pages(self):
+		root_obj = self.lookup(self._trailer[PDFName("/Root")])
+		pages_obj = self.lookup(root_obj.content[PDFName("/Pages")])
+		pagecontent_xrefs = pages_obj.content[PDFName("/Kids")]
+
+		for page_xref in pagecontent_xrefs:
+			page = self.lookup(page_xref)
+			yield page
+
+	@property
+	def parsed_pages(self):
+		for page in self.pages:
+			content_xref = page.content[PDFName("/Contents")]
+			content = self.lookup(content_xref)
+			if PDFName("/Filter") not in content.content:
+				# Uncompressed page
+				pagedata = content.stream
+			elif content.content[PDFName("/Filter")] == PDFName("/FlateDecode"):
+				pagedata = zlib.decompress(content.stream)
+			else:
+				raise Exception("Do not know how to decompress page contents.")
+			pagedata = pagedata.decode("utf-8")
+			yield (page, GraphicsParser.parse(pagedata))
+
+	def __getitem__(self, key):
+		(objid, gennum) = key
+		return self._objs.get((objid, gennum))
+
+	def lookup(self, xref):
+		return self[(xref.objid, xref.gennum)]
+
+	def __iter__(self):
+		return iter(self._objs.values())
+
+	def _read_objects(self):
+		while True:
+			obj = PDFObject.parse(self._f)
+			if obj is None:
+				break
+			self._objs[(obj.objid, obj.gennum)] = obj
+
+	def _read_xref_table(self):
+		assert(self._f.readline() == b"xref")
+		entries = self._f.readline()
+		entrycnt = int(entries.decode("ascii").split()[1])
+		for i in range(entrycnt):
+			self._f.readline()
+
+	def _read_trailer(self):
+		assert(self._f.readline() == b"trailer")
+		(trailer_data, delimiter) = self._f.read_until([ b"startxref\r\n", b"startxref\n" ])
+		trailer_data = trailer_data.decode("utf-8")
+		trailer = PDFParser.parse(trailer_data)
+		self._f.readline()
+		assert(self._f.readline() == b"%%EOF")
+		return trailer
+
+	def read_stream(self):
+		self._f.read_until([ b"stream\r\n", b"stream\n" ])
+		(data, terminal) = self._f.read_until([ b"endstream\r\n", b"endstream\n" ])
+		return data
+

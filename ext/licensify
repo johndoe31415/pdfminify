@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+#
+
+for FILENAME in $*; do
+	if [ ! -f "$FILENAME" ]; then
+		continue
+	fi
+	echo -n "${FILENAME}..."
+	grep "This file is part of luksrku" "$FILENAME" >/dev/null 2>&1
+	if [ "$?" == "0" ]; then
+		echo "Already tagged."
+	else
+		cat LICENSE-header "${FILENAME}" >tmp
+		mv tmp "${FILENAME}"
+		echo "Tagged!"
+	fi
+done
