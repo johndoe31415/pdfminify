@@ -164,34 +164,48 @@ class GraphicsInterpreter(object):
 	def _run_command(self, cmd):
 		cmdcode = cmd.command
 		if cmdcode == "q":
+			# Save graphic state
 			self._gss.append(dict(self._gs))
 		elif cmdcode == "Q":
+			# Restore graphic state
 			self._gs = self._gss.pop()
 		elif cmdcode == "cm":
+			# Apply to current transformation matrix (CTM)
 			self._gs["CTM"] *= TransformationMatrix(*cmd.args)
 		elif cmdcode in [ "re" ]:
+			# Append a rectangle to the current path
 			self._path.append(cmd)
 		elif cmdcode in [ "W" ]:
-			pass
+			# Use current path as clipping
 #			print("Cliping", self._path)
+			pass
 		elif cmdcode in [ "S", "s", "f", "F", "f*", "B", "B*", "b", "b*", "n" ]:
+			# Any of these commands will finish a path
 			if (cmdcode == "f") and (len(self._path) == 1) and (self._path[0].command == "re"):
 				self._callback_fill_rect()
 			self._path = [ ]
 		elif cmdcode == "scn":
-			# Load pattern
+			# Set color for non-stroking
 			self._gs["color_ns"] = cmd.args[0]
 		elif cmdcode == "gs":
+#			print("Load graphic state")
 			pass
-#			print("Load graphic state?")
 		elif cmdcode == "Do":
+			# Draw object
 			if self._draw_callback is not None:
 				image_handle = cmd.args[0]
 				xobjects = self._page_resources.content[PDFName("/XObject")]
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
+				
+				# TODO FIXME: I'm VERY sure the constant factor of 1.25 here is
+				# a bug. It's what is required to make PDFs that are generated
+				# by Inkscape work properly, but that value cannot just come
+				# out of nowhere. Threfore this most certainly will break other
+				# implementations. Please send a PR if you know what's going
+				# on.
 				extents = self._gs["CTM"].extents(scale = 1.25)
-				# TODO: 1.25? WHY?
+
 				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, extents = extents))
 #		else:
 #			print("Ignoring unknown command: %s" % (cmd))

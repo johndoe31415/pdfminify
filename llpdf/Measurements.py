@@ -47,6 +47,3 @@ if __name__ == "__main__":
 		value = Measurements.convert(1, unit, "cm")
 		print("1 %s = %.1f cm" % (unit, value))
 
-#	for unit in Measurements.list_units():
-#		value = Measurements.convert(10, "mm", unit)
-#		print("1 %s = %.1f cm" % (value, unit))
