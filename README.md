@@ -29,6 +29,15 @@ pdfminify is licensed under the GNU GPL v3 (except for external components as
 TPG, which has its own license). Later versions of the GPL are explicitly
 excluded.
 
+# PDF reading/writing
+pdfminify uses its own PDF parser because for this particular purpose, neither
+PyPDF2 nor pdfrw (which I both tried to use) seem suitable. This PDF
+reader/writer is therefore is implemented in its own (included) library in the
+"llpdf" subdirectory. It's the "low-level PDF" library because in contrast to
+other PDF libraries, it has very little abstraction of the PDF file itself (and
+exposes all the ugly PDF internals to the poor user). Feel free to play around
+with it as you like!
+
 # Bugs
 PDF is an inherently messy format and parsing it really isn't pretty. I've
 implemented only what I needed to implement in order to get my job done. I'm
