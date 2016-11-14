@@ -22,11 +22,9 @@
 #
 
 from . import tpg
+from . import ParseTools
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
-
-def _to_bool(value):
-	return value == "true"
 
 class PDFParser(tpg.VerboseParser):
 	r"""
@@ -40,8 +38,9 @@ class PDFParser(tpg.VerboseParser):
 		token end_string '\)';
 		token float   '-?\d*\.\d+'							$ float
 		token integer   '-?\d+'								$ int
-		token bool 'true|false'								$ _to_bool
+		token bool 'true|false'								$ ParseTools.to_bool
 		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
+		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 		token string '[^()]*';
 
 		START/e -> PDFExpression/e
@@ -56,8 +55,10 @@ class PDFParser(tpg.VerboseParser):
 		;
 
 		PDFDict/d -> start_dict								$ d = dict()
-						( PDFName/k PDFExpression/v			$ d[k] = v
-						)* end_dict
+						(
+							PDFName/k PDFExpression/v		$ d[k] = v
+						)*
+						end_dict
 		;
 
 		PDFArray/a -> start_array							$ a = list()
@@ -74,6 +75,7 @@ class PDFParser(tpg.VerboseParser):
 		PDFValue/e -> integer/e
 					| float/e
 					| bool/e
+					| hexstring/e
 		;
 
 		PDFString/s -> start_string							$ s = ""
@@ -84,35 +86,40 @@ class PDFParser(tpg.VerboseParser):
 		end_string
 		;
 
+#		PDFString/s -> start_string							$ s = bytearray()
+#						(
+#							'\\.'/e							$ s += ParseTools.interpret_escape(e)
+#							| '[^\\()]+'/e					$ s += e.encode("utf-8")
+#							| PDFString/e					$ s += b"(" + e + b")"
+#						)*
+#						end_string
+#		;
+
+
+
 	"""
 
 	verbose = 0
 
 
 def parse(text):
-	try:
-		parser = PDFParser()
-		result = parser(text)
-	except (tpg.LexicalError, tpg.SyntacticError) as e:
-		print("-" * 120)
-		print(text)
-		print("-" * 120)
-		print(text.split("\n")[e.line - 1])
-		print((" " * (e.column - 1)) + "^")
-		raise
-	return result
+	return ParseTools.parse_using(text, PDFParser)
 
 if __name__ == "__main__":
 	examples = [
-		"13478",
+#		r"(Foo Bar)",
+#		r"(Foo \\ Bar)",
+#		r"(Foo \\ \) Bar)",
+#		"(Foo (Klammer) Bar)",
+#		"(Foo (Klammer (Klammer2) Yeah) Bar)",
+#		"13478",
 		"<< /Foobar13478 123 >>",
-		"[ /Foobar13478 /Barfoo999 ]",
-		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
-		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
-		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
+#		"[ /Foobar13478 /Barfoo999 ]",
+#		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
+#		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
+#		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
 	]
 
-	pdf_parser = PDFParser()
 	for example in examples:
-		print(pdf_parser(example))
+		print(parse(example))
 

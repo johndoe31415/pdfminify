@@ -22,12 +22,8 @@
 #
 
 from . import tpg
+from . import ParseTools
 from llpdf.types.PDFName import PDFName
-
-def _to_hexstring(text):
-	text = text[1 : -1]
-	text = text.replace("\n", "")
-	return bytes.fromhex(text)
 
 class GraphCommand(object):
 	def __init__(self, command, *args):
@@ -61,7 +57,7 @@ class GraphicsParser(tpg.VerboseParser):
 		token integer   '-?\d+'								$ int
 		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
 		token string '\([^()]*\)';
-		token hexstring '<[\na-fA-F0-9]*>'					$ _to_hexstring
+		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 		token cmd134 '(SCN|scn|SC|sc)';
 		token cmd0 '(BT|ET|BI|ID|EI|W\*|T\*|f\*|B\*|b\*|q|Q|h|S|s|f|F|B|b|n|W)';
 		token cmd1 '(gs|CS|cs|sh|Do|Tj|TJ|Tc|Tw|Tz|TL|Tr|Ts|ri|w|J|j|M|i|G|g)';
@@ -110,19 +106,8 @@ class GraphicsParser(tpg.VerboseParser):
 
 	verbose = 0
 
-
 def parse(text):
-	try:
-		parser = GraphicsParser()
-		result = parser(text)
-	except (tpg.LexicalError, tpg.SyntacticError) as e:
-		print("-" * 120)
-		print(text)
-		print("-" * 120)
-		print(text.split("\n")[e.line - 1])
-		print((" " * (e.column - 1)) + "^")
-		raise
-	return result
+	return ParseTools.parse_using(text, GraphicsParser)
 
 if __name__ == "__main__":
 	examples = [
