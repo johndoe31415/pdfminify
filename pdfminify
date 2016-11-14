@@ -34,7 +34,7 @@ def _cropbox(text):
 	return [ float(value) for value in text ]
 
 parser = FriendlyArgumentParser()
-parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default DPI to resample images to. Defaults to %(default)s DPI.")
+parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
 parser.add_argument("--jpg-images", action = "store_true", help = "Convert images to JPEGs.")
 parser.add_argument("--jpg-quality", metavar = "percent", type = int, default = 85, help = "When converting images to JPEG, gives the compression quality from 0-100 (higher is better, but also larger).")
 parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Additionally add a /CropBox to all pages of the PDF file. Must be given in the format x,y,w,h.")
