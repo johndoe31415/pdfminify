@@ -23,6 +23,7 @@
 import logging
 import collections
 from llpdf.types.PDFName import PDFName
+from llpdf.types.PDFXRef import PDFXRef
 
 #> x := Matrix([[a,b,0],[c,d,0],[e,f,1]]);
 #                                                                                   [a    b    0]
@@ -129,8 +130,9 @@ class GraphicsInterpreter(object):
 		self._draw_callback = None
 
 		if (pdf_lookup is not None) and (page_obj is not None):
-			resources_xref = self._page_obj.content[PDFName("/Resources")]
-			resources = self._pdf_lookup.lookup(resources_xref)
+			resources = self._page_obj.content[PDFName("/Resources")]
+			if isinstance(resources, PDFXRef):
+				resources = self._pdf_lookup.lookup(resources)
 			self._page_resources = resources
 
 	def set_draw_callback(self, callback):
