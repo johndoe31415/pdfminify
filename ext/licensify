@@ -7,11 +7,11 @@ for FILENAME in $*; do
 		continue
 	fi
 	echo -n "${FILENAME}..."
-	grep "This file is part of luksrku" "$FILENAME" >/dev/null 2>&1
+	grep "This file is part of pdfminify" "$FILENAME" >/dev/null 2>&1
 	if [ "$?" == "0" ]; then
 		echo "Already tagged."
 	else
-		cat LICENSE-header "${FILENAME}" >tmp
+		cat ext/LICENSE-header "${FILENAME}" >tmp
 		mv tmp "${FILENAME}"
 		echo "Tagged!"
 	fi
