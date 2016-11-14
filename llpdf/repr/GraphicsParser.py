@@ -115,7 +115,7 @@ def parse(text):
 	try:
 		parser = GraphicsParser()
 		result = parser(text)
-	except tpg.LexicalError as e:
+	except (tpg.LexicalError, tpg.SyntacticError) as e:
 		print("-" * 120)
 		print(text)
 		print("-" * 120)
