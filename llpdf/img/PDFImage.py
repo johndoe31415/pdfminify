@@ -33,6 +33,7 @@ from llpdf.types.PDFName import PDFName
 class PDFImageType(enum.IntEnum):
 	FlateDecode = 1
 	DCTDecode = 2
+	RunLengthDecode = 3
 
 class PDFImage(object):
 	def __init__(self, width, height, imgdata, imgtype):
@@ -46,12 +47,18 @@ class PDFImage(object):
 	def create_from_object(cls, xobj):
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
+		active_filter = xobj.content[PDFName("/Filter")]
+		if isinstance(active_filter, list):
+			if len(active_filter) != 1:
+				raise Exception("Multi-filter application is unsupported as of now: %s." % (active_filter))
+			active_filter = active_filter[0]
 		imgtype = {
-			PDFName("/FlateDecode"):	PDFImageType.FlateDecode,
-			PDFName("/DCTDecode"):		PDFImageType.DCTDecode,
-		}.get(xobj.content[PDFName("/Filter")])
+			PDFName("/FlateDecode"):		PDFImageType.FlateDecode,
+			PDFName("/DCTDecode"):			PDFImageType.DCTDecode,
+			PDFName("/RunLengthDecode"):	PDFImageType.RunLengthDecode,
+		}.get(active_filter)
 		if imgtype is None:
-			raise Exception("Cannot create image from unknown type '%s'." % (xobj.content[PDFName("/Filter")]))
+			raise Exception("Cannot create image from unknown type '%s'." % (active_filter))
 		return cls(width = width, height = height, imgdata = xobj.stream, imgtype = imgtype)
 
 	@property
@@ -73,13 +80,37 @@ class PDFImage(object):
 	@property
 	def extension(self):
 		return {
-			PDFImageType.FlateDecode:	"pnm",
-			PDFImageType.DCTDecode:		"jpg",
+			PDFImageType.FlateDecode:		"pnm",
+			PDFImageType.RunLengthDecode:	"pnm",
+			PDFImageType.DCTDecode:			"jpg",
 		}[self.imgtype]
+
+	@staticmethod
+	def _rle_decode(rle_data):
+		result = bytearray()
+		index = 0
+		while index < len(rle_data):
+			length = rle_data[index]
+			index += 1
+			if 0 <= length <= 127:
+				bytecnt = 1 + length
+				result += rle_data[index : index + bytecnt]
+				index += bytecnt
+			elif length == 128:
+				# EOD
+				break
+			else:
+				bytecnt = 257 - length
+				value = rle_data[index]
+				result += bytecnt * bytes([ value ])
+				index += 1
+		return result
 
 	def get_pixeldata(self):
 		if self.imgtype == PDFImageType.FlateDecode:
 			return zlib.decompress(self._imgdata)
+		elif self.imgtype == PDFImageType.RunLengthDecode:
+			return self._rle_decode(self._imgdata)
 		else:
 			raise Exception(NotImplemented)
 
@@ -107,8 +138,9 @@ class PDFImage(object):
 		pnm_image = self.get_pnm()
 
 		out_extension = {
-			PDFImageType.FlateDecode:	".pnm",
-			PDFImageType.DCTDecode:		".jpg",
+			PDFImageType.FlateDecode:		".pnm",
+			PDFImageType.RunLengthDecode:	".pnm",
+			PDFImageType.DCTDecode:			".jpg",
 		}[new_img_type]
 		with NamedTemporaryFile(suffix = ".pnm") as orig_file, NamedTemporaryFile(suffix = out_extension) as resampled_file:
 			pnm_image.writefile(orig_file.name)
