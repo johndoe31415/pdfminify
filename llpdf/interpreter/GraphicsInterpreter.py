@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import logging
 import collections
 from llpdf.types.PDFName import PDFName
 
@@ -112,6 +113,7 @@ class TransformationMatrix(object):
 		return "Matrix<%f %f %f %f %f %f>" % (self.a, self.b, self.c, self.d, self.e, self.f)
 
 class GraphicsInterpreter(object):
+	_log = logging.getLogger("llpdf.interpreter.GraphicsInterpreter")
 	_DirectDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "image_obj", "extents" ])
 	_PatternDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "pattern_obj", "image_obj", "extents" ])
 
@@ -159,6 +161,7 @@ class GraphicsInterpreter(object):
 
 		extents = pattern_matrix.extents(width = width_px, height = height_px, scale = (1 / 72) * 25.4)
 
+		self._log.debug("Pattern draw object of %s found with CTM %s and pattern matrix %s; extent at %s", image_resource, self._gs["CTM"], pattern_matrix, extents)
 		self._draw_callback(self._PatternDrawCallbackResult(drawtype = "pattern", pattern_obj = pattern, image_obj = image_resource, extents = extents))
 
 	def _run_command(self, cmd):
@@ -197,7 +200,7 @@ class GraphicsInterpreter(object):
 				xobjects = self._page_resources.content[PDFName("/XObject")]
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
-				
+
 				# TODO FIXME: I'm VERY sure the constant factor of 1.25 here is
 				# a bug. It's what is required to make PDFs that are generated
 				# by Inkscape work properly, but that value cannot just come
@@ -205,6 +208,7 @@ class GraphicsInterpreter(object):
 				# implementations. Please send a PR if you know what's going
 				# on.
 				extents = self._gs["CTM"].extents(scale = 1.25)
+				self._log.debug("Draw object of %s found with CTM %s; extent at %s", image_obj, self._gs["CTM"], extents)
 
 				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, extents = extents))
 #		else:

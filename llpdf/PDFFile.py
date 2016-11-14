@@ -23,6 +23,7 @@
 import re
 import zlib
 import collections
+import logging
 
 from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
@@ -30,18 +31,22 @@ from llpdf.repr import PDFParser, GraphicsParser
 from .FileRepr import StreamRepr
 
 class PDFFile(object):
+	_log = logging.getLogger("llpdf.PDFFile")
+
 	def __init__(self, f):
 		self._raw_f = f
 		self._f = StreamRepr.from_file(f)
 		self._hdr_version = self._identify()
+		self._log.debug("Header detected: %s", str(self._hdr_version))
 		if self._hdr_version not in [ b"%PDF-1.4", b"%PDF-1.5", b"%PDF-1.6", b"%PDF-1.7" ]:
-			print("Warning: Header indicates %s, unknown if we can handle this." % (self._hdr_version.decode()))
+			self._log.warning("Warning: Header indicates %s, unknown if we can handle this.", self._hdr_version.decode())
 
 		self._objs = { }
 		self._trailer = None
 		self._read_objects()
 		self._read_xref_table()
 		self._trailer = self._read_trailer()
+		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
 
 	def _identify(self):
 		self._f.seek(0)
@@ -135,10 +140,12 @@ class PDFFile(object):
 		return iter(self._objs.values())
 
 	def _read_objects(self):
+		self._log.debug("Started reading objects.")
 		while True:
 			obj = PDFObject.parse(self._f)
 			if obj is None:
 				break
+			self._log.debug("Read object: %s", obj)
 			self._objs[(obj.objid, obj.gennum)] = obj
 
 	def _read_next_xref_batch(self):
@@ -156,6 +163,7 @@ class PDFFile(object):
 		return True
 
 	def _read_xref_table(self):
+		self._log.debug("Started reading XRef table.")
 		line = self._f.readline()
 		if line not in [ b"xref", b"xref\r" ]:
 			raise Exception("Expected XRef table to appear, but encountered %s." % (str(line)))
@@ -165,6 +173,7 @@ class PDFFile(object):
 				return False
 
 	def _read_trailer(self):
+		self._log.debug("Started reading trailer.")
 		line = self._f.readline()
 		if line not in [ b"trailer", b"trailer\r" ]:
 			raise Exception("Expected trailer to appear, but encountered %s." % (str(line)))

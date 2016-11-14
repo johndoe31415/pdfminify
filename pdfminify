@@ -23,6 +23,7 @@
 
 import sys
 import os
+import logging
 import llpdf
 from FriendlyArgumentParser import FriendlyArgumentParser
 from FilesizeFormatter import FilesizeFormatter
@@ -36,12 +37,15 @@ parser = FriendlyArgumentParser()
 parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default DPI to resample images to. Defaults to %(default)s DPI.")
 parser.add_argument("--jpg-images", action = "store_true", help = "Convert images to JPEGs.")
 parser.add_argument("--jpg-quality", metavar = "percent", type = int, default = 85, help = "When converting images to JPEG, gives the compression quality from 0-100 (higher is better, but also larger).")
-parser.add_argument("-v", "--verbose", action = "store_true", help = "Show verbose messages during conversation.")
 parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Additionally add a /CropBox to all pages of the PDF file. Must be given in the format x,y,w,h.")
 parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit that is used for command line processing. Can be any of %(choices)s, defaults to %(default)s.")
+parser.add_argument("--saveimgdir", metavar = "path", type = str, help = "When specified, save all handled images as individual files into the specified directory. Useful for debugging purposes and image extraction.")
+parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Show verbose messages during conversation. Can be specified multiple times to increase log level.")
 parser.add_argument("infile", metavar = "pdf_in", type = str, help = "Input PDF file.")
 parser.add_argument("outfile", metavar = "pdf_out", type = str, help = "Output PDF file.")
 args = parser.parse_args(sys.argv[1:])
+
+llpdf.configure_logging(args.verbose)
 
 pdf_filter_classes = [
 	llpdf.filters.RemoveDuplicateImageOptimization,
@@ -49,21 +53,25 @@ pdf_filter_classes = [
 	llpdf.filters.AddCropBoxFilter,
 ]
 
+log = logging.getLogger("llpdf")
+
 fsf = FilesizeFormatter()
 old_size = os.stat(args.infile).st_size
 with open(args.infile, "rb") as infile, open(args.outfile, "wb") as outfile:
 	pdf = llpdf.PDFFile(infile)
 
 	for pdf_filter_class in pdf_filter_classes:
+		log.debug("Running filter: %s", pdf_filter_class.__name__)
 		pdf_filter = pdf_filter_class(pdf, args)
 		pdf_filter.run()
 		if args.verbose:
-			print("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
-	
+			log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
+
 	writer = llpdf.PDFWriter(pdf, outfile)
 	writer.write()
 new_size = os.stat(args.outfile).st_size
 if args.verbose:
 	percent = 100 * new_size / old_size
 	saved = old_size - new_size
-	print("File size %s -> %s (%.0f%%, %s saved)" % (fsf(old_size), fsf(new_size), percent, fsf(saved)))
+	log.info("File size %s -> %s (%.0f%%, %s saved)" % (fsf(old_size), fsf(new_size), percent, fsf(saved)))
+

@@ -40,11 +40,10 @@ class RemoveDuplicateImageOptimization(PDFFilter):
 				continue
 			reference_object = objects[0]
 			delete_objects = objects[1:]
-			if self._args.verbose:
-				print("Relinking duplicate objects %s to %s" % (delete_objects, reference_object))
+			object_size = len(self._pdf.lookup(reference_object))
+			self._log.debug("Relinking %d duplicate objects with %d bytes each %s to %s", len(delete_objects), object_size, delete_objects, reference_object)
 			for delete_object in delete_objects:
 				relinker.relink(delete_object, reference_object)
 
-			object_size = len(self._pdf.lookup(reference_object))
 			self._optimized(len(objects) * object_size, object_size)
 		relinker.run()

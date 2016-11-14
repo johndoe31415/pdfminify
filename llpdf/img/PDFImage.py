@@ -47,7 +47,8 @@ class PDFImage(object):
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
 		imgtype = {
-			PDFName("/FlateDecode"): PDFImageType.FlateDecode,
+			PDFName("/FlateDecode"):	PDFImageType.FlateDecode,
+			PDFName("/DCTDecode"):		PDFImageType.DCTDecode,
 		}.get(xobj.content[PDFName("/Filter")])
 		if imgtype is None:
 			raise Exception("Cannot create image from unknown type '%s'." % (xobj.content[PDFName("/Filter")]))
@@ -68,6 +69,13 @@ class PDFImage(object):
 	@property
 	def imgtype(self):
 		return self._imgtype
+
+	@property
+	def extension(self):
+		return {
+			PDFImageType.FlateDecode:	"pnm",
+			PDFImageType.DCTDecode:		"jpg",
+		}[self.imgtype]
 
 	def get_pixeldata(self):
 		if self.imgtype == PDFImageType.FlateDecode:
@@ -121,6 +129,14 @@ class PDFImage(object):
 			(new_width, new_height) = self._get_image_width_height(resampled_file.name)
 			image = PDFImage(new_width, new_height, imgdata, new_img_type)
 			return image
+
+	def writefile(self, filename):
+		if self.imgtype == PDFImageType.FlateDecode:
+			pnm_image = self.get_pnm()
+			pnm_image.writefile(filename)
+		else:
+			with open(filename, "wb") as f:
+				f.write(self._imgdata)
 
 	def __len__(self):
 		return len(self._imgdata)

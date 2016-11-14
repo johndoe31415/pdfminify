@@ -36,18 +36,26 @@ class DownscaleImageOptimization(PDFFilter):
 			h = max(h, current_h)
 		self._max_image_extents[image_xref] = (w, h)
 
+	def _save_image(self, subdir, img_object):
+		if self._args.saveimgdir is not None:
+			img = img_object.get_image()
+			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, subdir, img_object.objid, img.extension)
+			img.writefile(filename)
+
 	def _rescale(self, image_obj, scale_factor):
 		img = image_obj.get_image()
+		self._save_image("original", image_obj)
 
 		if (img.imgtype == PDFImageType.FlateDecode) and (self._args.jpg_images):
-			target_type = img.imgtype
+			target_type = PDFImageType.DCTDecode
 		else:
 			target_type = img.imgtype
-		if self._args.verbose:
-			print("Resampling %s to %s with scale factor %.2f" % (img, target_type.name, scale_factor))
+		self._log.debug("Resampling %s to %s with scale factor %.2f", img, target_type.name, scale_factor)
 		img = img.reformat(target_type, scale_factor = scale_factor)
+
 		new_obj = PDFObject.create_image(image_obj.objid, image_obj.gennum, img)
 		self._optimized(len(image_obj), len(new_obj))
+		self._save_image("resampled", new_obj)
 		image_obj.replace_by(new_obj)
 
 	def run(self):
@@ -63,6 +71,7 @@ class DownscaleImageOptimization(PDFFilter):
 			image = self._pdf.lookup(img_xref)
 			if (PDFName("/Width") not in image.content):
 				# TODO: What kind of image doesn't have width/height set?
+				self._log.warning("Do not know how to handle image without set width: %s", image)
 				continue
 			(pixel_w, pixel_h) = (image.content[PDFName("/Width")], image.content[PDFName("/Height")])
 
@@ -72,7 +81,7 @@ class DownscaleImageOptimization(PDFFilter):
 			current_dpi_h = pixel_h / maxh_inches
 			current_dpi = min(current_dpi_w, current_dpi_h)
 			if self._args.verbose:
-				print("Current DPI of %s: %.0f" % (image, current_dpi))
+				self._log.debug("Current resolution of %s: %.0f dpi", image, current_dpi)
 
 			scale_factor = min(self._args.target_dpi / current_dpi, 1)
 			self._rescale(image, scale_factor)

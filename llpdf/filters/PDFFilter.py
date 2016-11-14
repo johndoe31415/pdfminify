@@ -20,8 +20,11 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import logging
+
 class PDFFilter(object):
 	def __init__(self, pdf, args):
+		self._log = logging.getLogger("llpdf.filters." + self.__class__.__name__)
 		self._pdf = pdf
 		self._args = args
 		self._bytes_saved = 0
