@@ -46,10 +46,15 @@ class PDFFile(object):
 	def _identify(self):
 		self._f.seek(0)
 		version = self._f.readline()
+
+		pos = self._f.tell()
+
 		after_hdr = self._f.read(6)
-		assert(after_hdr[0] == ord("%"))
-		assert(all(value & 0x80 == 0x80 for value in after_hdr[ 1 : 5]))
-		return version
+		if (after_hdr[0] != ord("%")) or any(value & 0x80 != 0x80 for value in after_hdr[ 1 : 5 ]):
+			self._log.warn("PDF seems to violate standard, bytes read after initial line are %s.", after_hdr)
+			self._f.seek(pos)
+
+		return version.rstrip(b"\r\n ")
 
 	@property
 	def trailer(self):
