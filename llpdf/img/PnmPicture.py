@@ -24,9 +24,24 @@
 #	File UUID 1942070a-e148-43ba-ab07-1ff75d53fe01
 
 import math
+import enum
+
+class PnmPictureFormat(enum.IntEnum):
+	Bitmap = 1
+	Graymap = 2
+	Pixmap = 3
 
 # Coordinates: 0, 0 is upper left corner
 class PnmPicture(object):
+	_MAGIC_NUMBERS = {
+		"P1":	("ascii", PnmPictureFormat.Bitmap),
+		"P2":	("ascii", PnmPictureFormat.Graymap),
+		"P3":	("ascii", PnmPictureFormat.Pixmap),
+		"P4":	("binary", PnmPictureFormat.Bitmap),
+		"P5":	("binary", PnmPictureFormat.Graymap),
+		"P6":	("binary", PnmPictureFormat.Pixmap),
+	}
+
 	def __init__(self):
 		self._data = None
 		self._width = None
@@ -76,52 +91,81 @@ class PnmPicture(object):
 		img._data = bytearray(data)
 		return img
 
-	def readfile(self, filename):
-		f = open(filename, "rb")
-		metadata = { }
-		lines = [ ]
+	@classmethod
+	def _read_line(cls, f):
 		while True:
-			line = f.readline().decode("utf-8")[:-1]
-			if line.startswith("#"):
-				continue
-			lines.append(line)
-			if len(lines) == 3:
-				break
+			line = f.readline()
+			line = line.decode("utf-8").rstrip("\r\n")
+			if not line.startswith("#"):
+				return line
 
-		metadata["format"] = lines[0]
-		metadata["geometry"] = lines[1]
-		metadata["bpp"] = int(lines[2])
+	@classmethod
+	def readfile(cls, filename):
+		with open(filename, "rb") as f:
+			# First line gives the data format
+			data_format = cls._read_line(f)
+			if data_format not in cls._MAGIC_NUMBERS:
+				raise Exception("This image type (%s) is not supported at the moment." % (data_format))
 
-		(self._width, self._height) = [ int(s) for s in metadata["geometry"].split()]
-		# P2 = Grayscale ASCII
-		# P3 = RGB ASCII
-		# P5 = Grayscale binary
-		# P6 = RGB binary
-		assert(metadata["format"] in [ "P2", "P3", "P5", "P6" ])
-		assert(metadata["bpp"] == 255)
+			(encoding, datatype) = cls._MAGIC_NUMBERS[data_format]
 
-		fmt_binary = metadata["format"] in [ "P5", "P6" ]
-		rgb = metadata["format"] in [ "P3", "P6" ]
-		if rgb:
-			# RGB
-			if fmt_binary:
-				self._data = bytearray(f.read())
+			# Then the image geometry
+			geometry = cls._read_line(f)
+			(width, height) = (int(s) for s in geometry.split())
+			pixelcnt = width * height
+
+			# Only for non-bitmaps there's a number indicating the bpp
+			if datatype == PnmPictureFormat.Bitmap:
+				bpp = 1
 			else:
-				self._data = bytearray(self.pixelcnt * 3)
-				for i in range(self.pixelcnt * 3):
-					self._data[i] = int(f.readline())
-		else:
-			# Grayscale
-			if fmt_binary:
-				self._data = bytearray().join(bytes([c, c, c]) for c in f.read())
+				bpp = int(cls._read_line(f))
+				assert(bpp == 255)
+
+			# P2 = Grayscale ASCII
+			# P3 = RGB ASCII
+			# P4 = Bitmap binary
+			# P5 = Grayscale binary
+			# P6 = RGB binary
+
+			if datatype == PnmPictureFormat.Pixmap:
+				# RGB
+				if encoding == "binary":
+					data = bytearray(f.read())
+				else:
+					data = bytearray(pixelcnt * 3)
+					for i in range(pixelcnt * 3):
+						data[i] = int(f.readline())
+			elif datatype == PnmPictureFormat.Graymap:
+				# Grayscale
+				if encoding == "binary":
+					data = bytearray().join(bytes([c, c, c]) for c in f.read())
+				else:
+					data = bytearray()
+					for i in range(pixelcnt):
+						c = int(f.readline())
+						data += bytes([ c, c, c ])
+			elif datatype == PnmPictureFormat.Bitmap:
+				if encoding == "binary":
+					raw_data = bytearray(f.read())
+					data = bytearray(pixelcnt * 3)
+					byte_width = (width + 7) // 8
+					target = 0
+					for (index, value) in enumerate(raw_data):
+						y = index // byte_width
+						for bit in range(8):
+							x = (8 * (index % byte_width)) + bit
+							if x < width:
+								pixel = int((value >> bit) != 0) * 255
+								data[target + 0] = pixel
+								data[target + 1] = pixel
+								data[target + 2] = pixel
+								target += 3
+				else:
+					raise Exception(NotImplemented)
 			else:
-				self._data = bytearray()
-				for i in range(self.pixelcnt):
-					c = int(f.readline())
-					self._data += bytes([ c, c, c ])
-		f.close()
-		assert(self.pixelcnt * 3 == len(self._data))
-		return self
+				raise Exception(NotImplemented)
+
+			return cls.fromdata(width, height, data)
 
 	def _getoffset(self, x, y):
 		assert(0 <= x < self.width)
@@ -423,15 +467,16 @@ if __name__ == "__main__":
 #	import timeit
 #	print(timeit.Timer("from PnmPicture import PnmPicture; PnmPicture().readfile('random.pnm')").repeat(repeat = 3, number = 100))
 
-	pic = PnmPicture().readfile("foo.pnm")
-	stencil = FilterStencil(3, 3, [
-		2, 0, 2,
-		0, 0, 0,
-		2, 0, 2
-	])
+#	pic = PnmPicture().readfile("foo.pnm")
+#	stencil = FilterStencil(3, 3, [
+#		2, 0, 2,
+#		0, 0, 0,
+#		2, 0, 2
+#	])
 #	stencil = FilterStencil.getgaussian(4)
-	pic.applystencil(stencil, pic)
-	pic.writefile("bar.pnm")
+#	pic.applystencil(stencil, pic)
+#	pic.writefile("bar.pnm")
 
-
+	pic = PnmPicture()
+	pic.readfile("../../tmp2ibo_pzi.pnm")
 

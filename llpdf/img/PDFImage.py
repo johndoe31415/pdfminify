@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import time
 import hashlib
 import re
 import zlib
