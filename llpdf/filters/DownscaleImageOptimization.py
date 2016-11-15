@@ -72,15 +72,11 @@ class DownscaleImageOptimization(PDFFilter):
 			interpreter.run(page_content)
 
 		for (img_xref, (maxw_mm, maxh_mm)) in self._max_image_extents.items():
-			image = self._pdf.lookup(img_xref)
+			self._log.debug("Estimated image %s to have maximum dimensions of %.1f x %.1f mm", img_xref, maxw_mm, maxh_mm)
+			image = self._pdf.get_image(img_xref)
 			self._save_image("original", image)
 
-			if (PDFName("/Width") not in image.content):
-				# TODO: What kind of image doesn't have width/height set?
-				self._log.warning("Do not know how to handle image without set width: %s", image)
-				continue
-			(pixel_w, pixel_h) = (image.content[PDFName("/Width")], image.content[PDFName("/Height")])
-
+		if False:
 			maxw_inches = maxw_mm / 25.4
 			maxh_inches = maxh_mm / 25.4
 			current_dpi_w = pixel_w / maxw_inches

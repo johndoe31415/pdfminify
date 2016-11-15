@@ -133,11 +133,9 @@ class PDFObject(Comparable):
 	def is_pattern(self):
 		return isinstance(self.content, dict) and (self.content.get(PDFName("/PatternType")) == 1) and (self.content.get(PDFName("/PaintType")) == 1)
 
-	def get_image(self):
-		return PDFImage.create_from_object(self)
-
 	def __len__(self):
 		return 0 if self.stream is None else len(self.stream)
 
 	def __str__(self):
 		return "PDFObject<ID=%d, gen=%d, %d bytes>" % (self.objid, self.gennum, len(self))
+

@@ -25,6 +25,7 @@ import zlib
 import collections
 import logging
 
+from .img.PDFImage import PDFImage
 from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
 from llpdf.repr import PDFParser, GraphicsParser
@@ -191,3 +192,11 @@ class PDFFile(object):
 		(data, terminal) = self._f.read_until([ b"endstream\r\n", b"endstream\n" ])
 		return data
 
+	def get_image(self, img_xref):
+		image = self.lookup(img_xref)
+		if PDFName("/SMask") in image.content:
+			# image has an alpha channel
+			alpha_channel = self.lookup(image.content[PDFName("/SMask")])
+		else:
+			alpha_channel = None
+		return PDFImage.create_from_object(image, alpha_channel)

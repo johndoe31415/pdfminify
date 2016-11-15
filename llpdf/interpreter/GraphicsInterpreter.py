@@ -116,13 +116,7 @@ class GraphicsInterpreter(object):
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 
-				# TODO FIXME: I'm VERY sure the constant factor of 1.25 here is
-				# a bug. It's what is required to make PDFs that are generated
-				# by Inkscape work properly, but that value cannot just come
-				# out of nowhere. Threfore this most certainly will break other
-				# implementations. Please send a PR if you know what's going
-				# on.
-				extents = self._gs["CTM"].extents(scale = 1.25)
+				extents = self._gs["CTM"].extents(scale = 1 / 72 * 25.4)
 				self._log.debug("Draw object of %s found with CTM %s; extent at %s", image_obj, self._gs["CTM"], extents)
 
 				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, extents = extents))

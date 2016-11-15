@@ -46,10 +46,11 @@ class PDFImage(object):
 		self._colorspace = colorspace
 		self._imgdata = imgdata
 		self._imgtype = imgtype
+		self._alpha = None
 		assert(isinstance(self._imgtype, PDFImageType))
 
 	@classmethod
-	def create_from_object(cls, xobj):
+	def create_raw_from_object(cls, xobj):
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
 		filter_info = xobj.content[PDFName("/Filter")]
@@ -72,6 +73,14 @@ class PDFImage(object):
 		if colorspace is None:
 			raise Exception("Unsupported image color space '%s'." % (colorspace_info))
 		return cls(width = width, height = height, colorspace = colorspace, imgdata = xobj.stream, imgtype = imgtype)
+	
+	@classmethod
+	def create_from_object(cls, xobj, alpha_xobj = None):
+		image = cls.create_raw_from_object(xobj)
+		if alpha_xobj is not None:
+			alpha_channel = cls.create_raw_from_object(alpha_xobj)
+			image._alpha = alpha_channel
+		return image
 
 	@property
 	def width(self):
@@ -92,6 +101,10 @@ class PDFImage(object):
 	@property
 	def colorspace(self):
 		return self._colorspace
+
+	@property
+	def alpha(self):
+		return self._alpha
 
 	@property
 	def extension(self):
@@ -202,5 +215,8 @@ class PDFImage(object):
 		return len(self._imgdata)
 
 	def __str__(self):
-		return "%sImg<%d x %d>" % (self.imgtype.name, self.width, self.height)
+		if self.alpha is None:
+			return "%sImg<%d x %d>" % (self.imgtype.name, self.width, self.height)
+		else:
+			return "%sImg<%d x %d> with alpha %s" % (self.imgtype.name, self.width, self.height, str(self.alpha))
 

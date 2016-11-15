@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import hashlib
 import collections
 from .PDFFilter import PDFFilter
 from .Relinker import Relinker
@@ -28,10 +29,8 @@ class RemoveDuplicateImageOptimization(PDFFilter):
 	def run(self):
 		objs_by_hash = collections.defaultdict(list)
 		for obj in self._pdf.image_objects:
-			img = obj.get_image()
-			hashval = img.pixel_hash()
+			hashval = hashlib.md5(obj.stream).hexdigest()
 			objs_by_hash[hashval].append(obj.xref)
-	#		print(hashval, img, obj)
 
 		relinker = Relinker(self._pdf)
 		for (hashval, objects) in objs_by_hash.items():
