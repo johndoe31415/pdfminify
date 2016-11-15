@@ -104,8 +104,12 @@ class TransformationMatrix(object):
 		)
 
 	@classmethod
+	def scale(cls, scale_factor):
+		return cls(scale_factor, 0, 0, scale_factor, 0, 0)
+
+	@classmethod
 	def identity(cls):
-		return cls(1, 0, 0, 1, 0, 0)
+		return cls.scale(1)
 
 	def __repr__(self):
 		return str(self)
