@@ -83,12 +83,19 @@ class PnmPicture(object):
 		return self.width * self.height
 
 	@classmethod
-	def fromdata(cls, width, height, data):
-		assert(width * height * 3 == len(data))
+	def fromdata(cls, width, height, data, grayscale = False):
+		expected_size = width * height
+		if not grayscale:
+			expected_size *= 3
+		if expected_size != len(data):
+			raise Exception("Expected %d bytes of data for a %d x %d image (grayscale = %s). Got %d bytes instead." % (expected_size, width, height, grayscale, len(data)))
 		img = cls()
 		img._width = width
 		img._height = height
-		img._data = bytearray(data)
+		if not grayscale:
+			img._data = bytearray(data)
+		else:
+			img._data = bytearray(c for c in data for _ in range(3))
 		return img
 
 	@classmethod

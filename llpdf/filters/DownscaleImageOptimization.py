@@ -28,6 +28,7 @@ from llpdf.interpreter.GraphicsInterpreter import GraphicsInterpreter
 
 class DownscaleImageOptimization(PDFFilter):
 	def _draw_callback(self, draw_cmd):
+		self._log.debug("Interpreter found image: %s", draw_cmd)
 		image_xref = draw_cmd.image_obj.xref
 		(w, h) = (abs(draw_cmd.extents.width), abs(draw_cmd.extents.height))
 		if image_xref in self._max_image_extents:
@@ -39,12 +40,12 @@ class DownscaleImageOptimization(PDFFilter):
 	def _save_image(self, subdir, img_object):
 		if self._args.saveimgdir is not None:
 			img = img_object.get_image()
+			print(img_object.content)
 			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, subdir, img_object.objid, img.extension)
 			img.writefile(filename)
 
 	def _rescale(self, image_obj, scale_factor):
 		img = image_obj.get_image()
-		self._save_image("original", image_obj)
 
 		if (img.imgtype == PDFImageType.FlateDecode) and (self._args.jpg_images):
 			target_type = PDFImageType.DCTDecode
@@ -69,6 +70,8 @@ class DownscaleImageOptimization(PDFFilter):
 
 		for (img_xref, (maxw_mm, maxh_mm)) in self._max_image_extents.items():
 			image = self._pdf.lookup(img_xref)
+			self._save_image("original", image)
+
 			if (PDFName("/Width") not in image.content):
 				# TODO: What kind of image doesn't have width/height set?
 				self._log.warning("Do not know how to handle image without set width: %s", image)

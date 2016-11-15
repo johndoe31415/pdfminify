@@ -35,10 +35,15 @@ class PDFImageType(enum.IntEnum):
 	DCTDecode = 2
 	RunLengthDecode = 3
 
+class PDFImageColorSpace(enum.IntEnum):
+	DeviceRGB = 1
+	DeviceGray = 2
+
 class PDFImage(object):
-	def __init__(self, width, height, imgdata, imgtype):
+	def __init__(self, width, height, colorspace, imgdata, imgtype):
 		self._width = width
 		self._height = height
+		self._colorspace = colorspace
 		self._imgdata = imgdata
 		self._imgtype = imgtype
 		assert(isinstance(self._imgtype, PDFImageType))
@@ -47,19 +52,26 @@ class PDFImage(object):
 	def create_from_object(cls, xobj):
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
-		active_filter = xobj.content[PDFName("/Filter")]
-		if isinstance(active_filter, list):
-			if len(active_filter) != 1:
-				raise Exception("Multi-filter application is unsupported as of now: %s." % (active_filter))
-			active_filter = active_filter[0]
+		filter_info = xobj.content[PDFName("/Filter")]
+		colorspace_info = xobj.content[PDFName("/ColorSpace")]
+		if isinstance(filter_info, list):
+			if len(filter_info) != 1:
+				raise Exception("Multi-filter application is unsupported as of now: %s." % (filter_info))
+			filter_info = filter_info[0]
 		imgtype = {
 			PDFName("/FlateDecode"):		PDFImageType.FlateDecode,
 			PDFName("/DCTDecode"):			PDFImageType.DCTDecode,
 			PDFName("/RunLengthDecode"):	PDFImageType.RunLengthDecode,
-		}.get(active_filter)
+		}.get(filter_info)
 		if imgtype is None:
-			raise Exception("Cannot create image from unknown type '%s'." % (active_filter))
-		return cls(width = width, height = height, imgdata = xobj.stream, imgtype = imgtype)
+			raise Exception("Cannot create image from unknown type '%s'." % (filter_info))
+		colorspace = {
+			PDFName("/DeviceRGB"):			PDFImageColorSpace.DeviceRGB,
+			PDFName("/DeviceGray"):			PDFImageColorSpace.DeviceGray,
+		}.get(colorspace_info)
+		if colorspace is None:
+			raise Exception("Unsupported image color space '%s'." % (colorspace_info))
+		return cls(width = width, height = height, colorspace = colorspace, imgdata = xobj.stream, imgtype = imgtype)
 
 	@property
 	def width(self):
@@ -76,6 +88,10 @@ class PDFImage(object):
 	@property
 	def imgtype(self):
 		return self._imgtype
+
+	@property
+	def colorspace(self):
+		return self._colorspace
 
 	@property
 	def extension(self):
@@ -118,7 +134,19 @@ class PDFImage(object):
 		return hashlib.md5(self.get_pixeldata()).hexdigest()
 
 	def get_pnm(self):
-		img = PnmPicture.fromdata(self.width, self.height, self.get_pixeldata())
+		pixeldata = self.get_pixeldata()
+		if self.colorspace == PDFImageColorSpace.DeviceRGB:
+			if self.width * self.height * 3 == len(pixeldata):
+				img = PnmPicture.fromdata(self.width, self.height, pixeldata)
+			elif self.width * self.height * 1 == len(pixeldata):
+				# Image is apparently grayscale, but was declared as RGB!
+				img = PnmPicture.fromdata(self.width, self.height, pixeldata, grayscale = True)
+			else:
+				raise Exception("Unexpected image size.")
+		elif self.colorspace == PDFImageColorSpace.DeviceGray:
+			img = PnmPicture.fromdata(self.width, self.height, pixeldata, grayscale = True)
+		else:
+			raise Exception("Creating PNM from colorspace %s is unsupported." % (self.colorspace))
 		return img
 
 	@staticmethod
@@ -159,7 +187,7 @@ class PDFImage(object):
 				with open(resampled_file.name, "rb") as f:
 					imgdata = f.read()
 			(new_width, new_height) = self._get_image_width_height(resampled_file.name)
-			image = PDFImage(new_width, new_height, imgdata, new_img_type)
+			image = PDFImage(new_width, new_height, self.colorspace, imgdata, new_img_type)
 			return image
 
 	def writefile(self, filename):
