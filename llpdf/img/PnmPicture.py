@@ -485,5 +485,5 @@ if __name__ == "__main__":
 #	pic.writefile("bar.pnm")
 
 	pic = PnmPicture()
-	pic.readfile("../../tmp2ibo_pzi.pnm")
+	pic.readfile("pnm_example_P4.pnm")
 
