@@ -56,7 +56,7 @@ class GraphicsParser(tpg.VerboseParser):
 		token float   '-?\d*\.\d+'							$ float
 		token integer   '-?\d+'								$ int
 		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
-		token string '\([^()]*\)';
+		token string '\(([^\)\\]+|\\[\)\(]|\\\d{3})*\)';
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 		token cmd134 '(SCN|scn|SC|sc)';
 		token cmd0 '(BT|ET|BI|ID|EI|W\*|T\*|f\*|B\*|b\*|q|Q|h|S|s|f|F|B|b|n|W)';
@@ -111,6 +111,7 @@ def parse(text):
 
 if __name__ == "__main__":
 	examples = [
+		"[(some in-depth )3(things\).)]TJ",
 		"q q q",
 		"q q q Q 1 2 3 4 5 6 cm",
 """
@@ -140,11 +141,8 @@ BT
 [(MOO KO)20(KOO)21(LOLS)3(KIX)]TJ
 ET
 Q
-"""
+""",
 	]
 
-	pdf_parser = GraphicsParser()
 	for example in examples:
-#		lineno = 23; print(example.split("\n")[lineno - 1])
-		result = pdf_parser(example)
-		print(result)
+		print(parse(example))

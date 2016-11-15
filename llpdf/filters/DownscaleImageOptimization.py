@@ -50,7 +50,7 @@ class DownscaleImageOptimization(PDFFilter):
 			target_type = PDFImageType.DCTDecode
 		else:
 			target_type = img.imgtype
-		self._log.debug("Resampling %s to %s with scale factor %.2f", img, target_type.name, scale_factor)
+		self._log.debug("Resampling %s to %s with scale factor %.3f", img, target_type.name, scale_factor)
 		img = img.reformat(target_type, scale_factor = scale_factor)
 
 		new_obj = PDFObject.create_image(image_obj.objid, image_obj.gennum, img)
