@@ -41,7 +41,8 @@ class PDFParser(tpg.VerboseParser):
 		token bool 'true|false'								$ ParseTools.to_bool
 		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
-		token string '[^()]*';
+		token string_content '[^\\()]+';
+		token string_escape_char '\\.';
 
 		START/e -> PDFExpression/e
 		;
@@ -78,28 +79,18 @@ class PDFParser(tpg.VerboseParser):
 					| hexstring/e
 		;
 
-		PDFString/s -> start_string							$ s = ""
-				(
-					string/e								$ s += e
-					| PDFString/e							$ s += "(" + e + ")"
-				)*
-		end_string
+		PDFString/s -> start_string							$ s = bytearray()
+						(
+							string_escape_char/e			$ s += ParseTools.interpret_escape(e)
+							| string_content/e				$ s += e.encode("utf-8")
+							| PDFString/e					$ s += b"(" + e + b")"
+						)*
+						end_string
 		;
-
-#		PDFString/s -> start_string							$ s = bytearray()
-#						(
-#							'\\.'/e							$ s += ParseTools.interpret_escape(e)
-#							| '[^\\()]+'/e					$ s += e.encode("utf-8")
-#							| PDFString/e					$ s += b"(" + e + b")"
-#						)*
-#						end_string
-#		;
-
-
 
 	"""
 
-	verbose = 0
+	verbose = 2
 
 
 def parse(text):
@@ -107,17 +98,18 @@ def parse(text):
 
 if __name__ == "__main__":
 	examples = [
-#		r"(Foo Bar)",
-#		r"(Foo \\ Bar)",
-#		r"(Foo \\ \) Bar)",
-#		"(Foo (Klammer) Bar)",
-#		"(Foo (Klammer (Klammer2) Yeah) Bar)",
-#		"13478",
+		r"(Foo Bar)",
+		r"(Foo \\ Bar)",
+		r"(Foo \\ \) Bar)",
+		"(Foo (Klammer) Bar)",
+		"(Foo (Klammer (Klammer2) Yeah) Bar)",
+		"(Foo (Space)                   Yes)",
+		"13478",
 		"<< /Foobar13478 123 >>",
-#		"[ /Foobar13478 /Barfoo999 ]",
-#		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
-#		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
-#		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
+		"[ /Foobar13478 /Barfoo999 ]",
+		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
+		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
+		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
 	]
 
 	for example in examples:
