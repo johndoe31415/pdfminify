@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import collections
 from .PDFFilter import PDFFilter
 from llpdf.img.PDFImage import PDFImageType
 from llpdf.types.PDFObject import PDFObject
@@ -36,6 +37,7 @@ class DownscaleImageOptimization(PDFFilter):
 			w = max(w, current_w)
 			h = max(h, current_h)
 		self._max_image_extents[image_xref] = (w, h)
+		self._draw_cmds[image_xref].append(draw_cmd)
 
 	def _save_image(self, subdir, img_object):
 		if self._args.saveimgdir is not None:
@@ -61,6 +63,7 @@ class DownscaleImageOptimization(PDFFilter):
 
 	def run(self):
 		self._max_image_extents = { }
+		self._draw_cmds = collections.defaultdict(list)
 
 		# Run through pages first to determine image extents
 		for (page_obj, page_content) in self._pdf.parsed_pages:
@@ -88,4 +91,9 @@ class DownscaleImageOptimization(PDFFilter):
 
 			scale_factor = min(self._args.target_dpi / current_dpi, 1)
 			self._rescale(image, scale_factor)
+
+			draw_commands = self._draw_cmds[img_xref]
+			pattern_draw_commands = [ draw_command for draw_command in draw_commands if draw_command.drawtype == "pattern" ]
+			if len(pattern_draw_commands) != 0:
+				print(pattern_draw_commands)
 

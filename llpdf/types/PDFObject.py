@@ -34,7 +34,7 @@ class PDFObject(Comparable):
 		self._objid = objid
 		self._gennum = gennum
 		if rawdata is not None:
-			if rawdata.startswith(b"<<") and ((b"stream\r\n" in rawdata) or (b"stream\n" in rawdata)):
+			if rawdata.lstrip(b" \r\n").startswith(b"<<") and ((b"stream\r\n" in rawdata) or (b"stream\n" in rawdata)):
 				line_offset = 0
 				offset = rawdata.find(b"stream\n")
 				if offset == -1:
@@ -114,7 +114,7 @@ class PDFObject(Comparable):
 		result = result.groupdict()
 		f.seek(pos + len(result["obj_header"]) + 1)
 		(objid, gennum) = (int(result["objid"]), int(result["gennum"]))
-		(obj_data, obj_end) = f.read_until([ b"endobj\r\n", b"endobj\n" ])
+		(obj_data, obj_end) = f.read_until([ b"endobj\r\n", b"endobj\n", b"endobj \r\n", b"endobj \n", b"endobj " ])
 		return cls(objid = objid, gennum = gennum, rawdata = obj_data)
 
 	@property
