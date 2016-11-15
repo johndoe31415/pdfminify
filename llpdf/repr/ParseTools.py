@@ -33,14 +33,14 @@ def to_hexstring(text):
 
 def interpret_escape(text):
 	result = {
-		r"\n":		b"\n",
-		r"\(":		b"(",
-		r"\)":		b")",
-		r"\\":		b"\\",
-	}.get(text)
+		b"\\n":		b"\n",
+		b"\\(":		b"(",
+		b"\\)":		b")",
+		b"\\\\":	b"\\",
+	}.get(text[0 : 2])
 	if result is None:
 		raise Exception("Unknown escape sequence %s in string input." % (text))
-	return result
+	return result + text[2:]
 
 def parse_using(text, parser_class):
 	try:

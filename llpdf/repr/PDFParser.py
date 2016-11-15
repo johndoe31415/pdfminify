@@ -34,15 +34,16 @@ class PDFParser(tpg.VerboseParser):
 		token end_dict '>>';
 		token start_array '\[';
 		token end_array '\]';
-		token start_string '\(';
-		token end_string '\)';
-		token float   '-?\d*\.\d+'							$ float
-		token integer   '-?\d+'								$ int
+		token float '-?\d*\.\d+'							$ float
+		token integer '-?\d+'								$ int
 		token bool 'true|false'								$ ParseTools.to_bool
 		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
+		token start_string '\(';
+		token end_string '\)\s*';
 		token string_content '[^\\()]+';
-		token string_escape_char '\\.';
+		token string_escape_char '\\.\s*';
+
 
 		START/e -> PDFExpression/e
 		;
@@ -73,24 +74,28 @@ class PDFParser(tpg.VerboseParser):
 		PDFXRef/e -> integer/a integer/b 'R'				$ e = PDFXRef(a, b)
 		;
 
-		PDFValue/e -> integer/e
-					| float/e
+		PDFValue/e -> float/e
+					| integer/e
 					| bool/e
 					| hexstring/e
 		;
 
 		PDFString/s -> start_string							$ s = bytearray()
-						(
-							string_escape_char/e			$ s += ParseTools.interpret_escape(e)
-							| string_content/e				$ s += e.encode("utf-8")
-							| PDFString/e					$ s += b"(" + e + b")"
-						)*
+							PDFInnerString/e				$ s += e
 						end_string
+		;
+
+		PDFInnerString/s ->													$ s = bytearray()
+						(
+							string_escape_char/e							$ s += ParseTools.interpret_escape(e.encode())
+							| start_string/a PDFInnerString/e end_string/b	$ s += a.encode() + e + b.encode()
+							| string_content/e								$ s += e.encode("utf-8")
+						)+
 		;
 
 	"""
 
-	verbose = 2
+	verbose = 0
 
 
 def parse(text):
@@ -99,7 +104,7 @@ def parse(text):
 if __name__ == "__main__":
 	examples = [
 		r"(Foo Bar)",
-		r"(Foo \\ Bar)",
+		r"(Foo \\   Bar)",
 		r"(Foo \\ \) Bar)",
 		"(Foo (Klammer) Bar)",
 		"(Foo (Klammer (Klammer2) Yeah) Bar)",
@@ -110,6 +115,8 @@ if __name__ == "__main__":
 		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
 		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
 		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
+		"[ 0.333679 0 0 0.333468 78.832642 172.074584 ]",
+		"[ 1.2345 1.2345 ]"
 	]
 
 	for example in examples:

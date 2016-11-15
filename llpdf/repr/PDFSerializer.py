@@ -35,8 +35,8 @@ class PDFSerializer(object):
 			yield "true" if obj else "false"
 		elif isinstance(obj, PDFName):
 			yield obj.value
-		elif isinstance(obj, str):
-			yield "(%s)" % (obj)
+		elif isinstance(obj, bytearray):
+			yield "(%s)" % (obj.decode("utf-8"))
 		elif isinstance(obj, PDFXRef):
 			yield "%d %d R" % (obj.objid, obj.gennum)
 		elif isinstance(obj, dict):
@@ -54,7 +54,7 @@ class PDFSerializer(object):
 				yield " "
 			yield " ]"
 		else:
-			raise Exception(NotImplemented)
+			raise Exception("Unknown serialization token: %s" % (type(obj)))
 
 	def serialize(self):
 		return "".join(self._serialize(self._obj))
