@@ -42,61 +42,62 @@ class PnmPicture(object):
 		"P6":	("binary", PnmPictureFormat.Pixmap),
 	}
 
-	def __init__(self):
-		self._data = None
-		self._width = None
-		self._height = None
+	_SAVE_FORMAT = {
+		PnmPictureFormat.Bitmap:	"P4",
+		PnmPictureFormat.Graymap:	"P5",
+		PnmPictureFormat.Pixmap:	"P6",
+	}
 
-	def new(self, width, height):
+	# Both bitmaps and graymaps take one byte per pixel internall, even
+	# when PNM bitmaps only take 1 bit per pixel (i.e., eight pixels
+	# per byte)
+	_BYTES_PER_PIXEL = {
+		PnmPictureFormat.Bitmap:	1,
+		PnmPictureFormat.Graymap:	1,
+		PnmPictureFormat.Pixmap:	3,
+	}
+
+	def __init__(self, width, height, data, img_format):
 		assert(isinstance(width, int))
 		assert(isinstance(height, int))
+		assert(isinstance(data, (bytes, bytearray)))
+		assert(isinstance(img_format, PnmPictureFormat))
 		self._width = width
 		self._height = height
-		self._data = bytearray(self.pixelcnt * 3)
-		return self
+		self._data = data
+		self._img_format = img_format
+
+		bytes_per_pixel = self._BYTES_PER_PIXEL[self._img_format]
+		expected_size = bytes_per_pixel * self._width * self._height
+		if expected_size != len(self._data):
+			raise Exception("Expected %d bytes of data for a %d x %d image (type %s). Got %d bytes instead." % (expected_size, self._width, self._height, self._img_format.name, len(data)))
 
 	def clone(self):
-		clone = PnmPicture().new(self.width, self.height)
-		clone._data = bytearray(self._data)
-		return clone
-
-	@property
-	def data(self):
-		if self._data is None:
-			raise Exception("No image loaded.")
-		return bytes(self._data)
-
+		return PnmPicture(self.width, self.height, bytearray(self.data), self.img_format)
+	
 	@property
 	def width(self):
-		if self._width is None:
-			raise Exception("No image loaded.")
 		return self._width
 
 	@property
 	def height(self):
-		if self._height is None:
-			raise Exception("No image loaded.")
 		return self._height
+
+	@property
+	def data(self):
+		return bytes(self._data)
+
+	@property
+	def img_format(self):
+		return self._img_format
 
 	@property
 	def pixelcnt(self):
 		return self.width * self.height
-
-	@classmethod
-	def fromdata(cls, width, height, data, grayscale = False):
-		expected_size = width * height
-		if not grayscale:
-			expected_size *= 3
-		if expected_size != len(data):
-			raise Exception("Expected %d bytes of data for a %d x %d image (grayscale = %s). Got %d bytes instead." % (expected_size, width, height, grayscale, len(data)))
-		img = cls()
-		img._width = width
-		img._height = height
-		if not grayscale:
-			img._data = bytearray(data)
-		else:
-			img._data = bytearray(c for c in data for _ in range(3))
-		return img
+	
+	@property
+	def bytes_per_pixel(self):
+		return self._BYTES_PER_PIXEL[self.img_format]
 
 	@classmethod
 	def _read_line(cls, f):
@@ -107,14 +108,15 @@ class PnmPicture(object):
 				return line
 
 	@classmethod
-	def readfile(cls, filename):
+	def read_file(cls, filename):
 		with open(filename, "rb") as f:
 			# First line gives the data format
 			data_format = cls._read_line(f)
 			if data_format not in cls._MAGIC_NUMBERS:
 				raise Exception("This image type (%s) is not supported at the moment." % (data_format))
 
-			(encoding, datatype) = cls._MAGIC_NUMBERS[data_format]
+			(encoding, img_format) = cls._MAGIC_NUMBERS[data_format]
+			bytes_per_pixel = cls._BYTES_PER_PIXEL[img_format]
 
 			# Then the image geometry
 			geometry = cls._read_line(f)
@@ -122,39 +124,24 @@ class PnmPicture(object):
 			pixelcnt = width * height
 
 			# Only for non-bitmaps there's a number indicating the bpp
-			if datatype == PnmPictureFormat.Bitmap:
+			if img_format == PnmPictureFormat.Bitmap:
 				bpp = 1
 			else:
 				bpp = int(cls._read_line(f))
 				assert(bpp == 255)
-
-			# P2 = Grayscale ASCII
-			# P3 = RGB ASCII
-			# P4 = Bitmap binary
-			# P5 = Grayscale binary
-			# P6 = RGB binary
-
-			if datatype == PnmPictureFormat.Pixmap:
+		
+			if img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
 				# RGB
 				if encoding == "binary":
 					data = bytearray(f.read())
 				else:
-					data = bytearray(pixelcnt * 3)
-					for i in range(pixelcnt * 3):
+					data = bytearray(pixelcnt * bytes_per_pixel)
+					for i in range(pixelcnt * bytes_per_pixel):
 						data[i] = int(f.readline())
-			elif datatype == PnmPictureFormat.Graymap:
-				# Grayscale
-				if encoding == "binary":
-					data = bytearray().join(bytes([c, c, c]) for c in f.read())
-				else:
-					data = bytearray()
-					for i in range(pixelcnt):
-						c = int(f.readline())
-						data += bytes([ c, c, c ])
-			elif datatype == PnmPictureFormat.Bitmap:
+			elif img_format == PnmPictureFormat.Bitmap:
 				if encoding == "binary":
 					raw_data = bytearray(f.read())
-					data = bytearray(pixelcnt * 3)
+					data = bytearray(pixelcnt * bytes_per_pixel)
 					byte_width = (width + 7) // 8
 					target = 0
 					for (index, value) in enumerate(raw_data):
@@ -163,245 +150,231 @@ class PnmPicture(object):
 							x = (8 * (index % byte_width)) + bit
 							if x < width:
 								pixel = int((value >> bit) != 0) * 255
-								data[target + 0] = pixel
-								data[target + 1] = pixel
-								data[target + 2] = pixel
-								target += 3
+								data[target] = pixel
+								target += 1
 				else:
 					raise Exception(NotImplemented)
 			else:
 				raise Exception(NotImplemented)
 
-			return cls.fromdata(width, height, data)
+			return cls(width = width, height = height, data = data, img_format = img_format)
 
 	def _getoffset(self, x, y):
 		assert(0 <= x < self.width)
 		assert(0 <= y < self.height)
-		offset = 3 * ((y * self.width) + x)
+		offset = self.bytes_per_pixel * ((y * self.width) + x)
 		return offset
 
-	def multiply(self, pixel):
-		(mr, mg, mb) = pixel
-		for y in range(self.height):
-			for x in range(self.width):
-				(r, g, b) = self.getpixel(x, y)
-				r = round((r * mr) / 255)
-				g = round((g * mg) / 255)
-				b = round((b * mb) / 255)
-				self.setpixel(x, y, (r, g, b))
-		return self
-
-	def downscale(self):
-		assert((self.width % 2) == 0)
-		assert((self.height % 2) == 0)
-		clone = PnmPicture().new(self.width // 2, self.height // 2)
-		for y in range(clone.height):
-			for x in range(clone.width):
-				pixel = self.getsubpicture(2 * x, 2 * y, 2, 2).avgcolor()
-				clone.setpixel(x, y, pixel)
-		return clone
-
-	def upscale(self, xmultiplicity = None, ymultiplicity = None):
-		assert((xmultiplicity is not None) or (ymultiplicity is not None))
-		if xmultiplicity is None:
-			xmultiplicity = 1
-		elif ymultiplicity is None:
-			ymultiplicity = 1
-		assert(isinstance(xmultiplicity, int))
-		assert(isinstance(ymultiplicity, int))
-		assert(xmultiplicity >= 1)
-		assert(ymultiplicity >= 1)
-		if (xmultiplicity == 1) and (ymultiplicity == 1):
-			return self
-		upscaled = PnmPicture().new(self.width * xmultiplicity, self.height * ymultiplicity)
-		for y in range(self.height):
-			for x in range(self.width):
-				pixel = self.getpixel(x, y)
-				for xoff in range(xmultiplicity):
-					for yoff in range(ymultiplicity):
-						upscaled.setpixel(xmultiplicity * x + xoff, ymultiplicity * y + yoff, pixel)
-		return upscaled
-
-	def getpixel(self, x, y):
+#	def multiply(self, pixel):
+#		(mr, mg, mb) = pixel
+#		for y in range(self.height):
+#			for x in range(self.width):
+#				(r, g, b) = self.getpixel(x, y)
+#				r = round((r * mr) / 255)
+#				g = round((g * mg) / 255)
+#				b = round((b * mb) / 255)
+#				self.setpixel(x, y, (r, g, b))
+#		return self
+#
+#	def downscale(self):
+#		assert((self.width % 2) == 0)
+#		assert((self.height % 2) == 0)
+#		clone = PnmPicture().new(self.width // 2, self.height // 2)
+#		for y in range(clone.height):
+#			for x in range(clone.width):
+#				pixel = self.getsubpicture(2 * x, 2 * y, 2, 2).avgcolor()
+#				clone.setpixel(x, y, pixel)
+#		return clone
+#
+#	def upscale(self, xmultiplicity = None, ymultiplicity = None):
+#		assert((xmultiplicity is not None) or (ymultiplicity is not None))
+#		if xmultiplicity is None:
+#			xmultiplicity = 1
+#		elif ymultiplicity is None:
+#			ymultiplicity = 1
+#		assert(isinstance(xmultiplicity, int))
+#		assert(isinstance(ymultiplicity, int))
+#		assert(xmultiplicity >= 1)
+#		assert(ymultiplicity >= 1)
+#		if (xmultiplicity == 1) and (ymultiplicity == 1):
+#			return self
+#		upscaled = PnmPicture().new(self.width * xmultiplicity, self.height * ymultiplicity)
+#		for y in range(self.height):
+#			for x in range(self.width):
+#				pixel = self.getpixel(x, y)
+#				for xoff in range(xmultiplicity):
+#					for yoff in range(ymultiplicity):
+#						upscaled.setpixel(xmultiplicity * x + xoff, ymultiplicity * y + yoff, pixel)
+#		return upscaled
+#
+	def get_pixel(self, x, y):
 		offset = self._getoffset(x, y)
-		(r, g, b) = (self._data[offset + 0], self._data[offset + 1], self._data[offset + 2])
-		return (r, g, b)
+		pixel = tuple(self._data[offset + 0] for i in range(self.bytes_per_pixel))
+		return pixel
 
-	def setpixel(self, x, y, pixel):
+	def set_pixel(self, x, y, pixel):
+		assert(len(pixel) == self.bytes_per_pixel)
 		offset = self._getoffset(x, y)
-		(r, g, b) = pixel
-		self._data[offset + 0] = r
-		self._data[offset + 1] = g
-		self._data[offset + 2] = b
+		for i in range(self.bytes_per_pixel):
+			self._data[offset + i] = pixel[i]
 		return self
 
-	def writefile(self, filename, channel = None):
-		if channel is not None:
-			# grayscale picture
-			stride = 3
-			offset = channel % 3
-		else:
-			stride = 1
-			offset = 0
-		f = open(filename, "wb")
-		if channel is None:
-			f.write("P6\n".encode("utf-8"))
-		else:
-			f.write("P5\n".encode("utf-8"))
-		f.write("# CREATOR: PnmPicture.py\n".encode("utf-8"))
-		f.write(("%d %d\n" % (self._width, self._height)).encode("utf-8"))
-		f.write("255\n".encode("utf-8"))
-		f.write(self._data[offset :: stride])
-		f.close()
+	def write_file(self, filename):
+		with open(filename, "wb") as f:
+			save_format = self._SAVE_FORMAT[self.img_format]
+			if save_format == "P4":
+				raise Exception(NotImplemented)
+			f.write(("%s\n" % (save_format)).encode("ascii"))
+			f.write(b"# CREATOR: PnmPicture.py\n")
+			f.write(("%d %d\n" % (self._width, self._height)).encode("ascii"))
+			f.write(b"255\n")
+			f.write(self._data)
 		return self
 
-	def getsubpicture(self, offsetx, offsety, width, height):
-		assert(offsetx + width <= self.width)
-		assert(offsety + height <= self.height)
-		subpic = PnmPicture().new(width, height)
-		subpic.blitsubpicture(-offsetx, -offsety, self)
-		return subpic
-
-	def blitsubpicture(self, offsetx, offsety, subpic):
-		#print("Blitting %s onto %s @ %d, %d" % (subpic, self, offsetx, offsety))
-		subdata = subpic._data
-
-		src_y_start = max(0, -offsety)
-		src_y_end = min(subpic.height, self.height - offsety)
-
-		src_x_start = max(0, -offsetx)
-		src_x_end = min(subpic.width, self.width - offsetx)
-		if src_x_start >= src_x_end:
-			# Complete X clipping, no blitting necessary
-			return
-
-		for yline in range(src_y_start, src_y_end):
-			src_o_start = subpic._getoffset(src_x_start, yline)
-			src_o_end = subpic._getoffset(src_x_end - 1, yline) + 3
-
-			dst_o_start = self._getoffset(src_x_start + offsetx, yline + offsety)
-			dst_o_end = self._getoffset(src_x_end + offsetx - 1, yline + offsety) + 3
-			self._data[dst_o_start : dst_o_end] = subpic._data[src_o_start : src_o_end]
-
-	def avgcolor(self):
-		(rsum, gsum, bsum) = (0, 0, 0)
-		for (r, g, b) in self:
-			rsum += r
-			gsum += g
-			bsum += b
-		r = round(rsum / self.pixelcnt)
-		g = round(gsum / self.pixelcnt)
-		b = round(bsum / self.pixelcnt)
-		return (r, g, b)
-
-	@staticmethod
-	def _blendpixel(pixel1, pixel2, opacity):
-		(r1, g1, b1) = pixel1
-		(r2, g2, b2) = pixel2
-		return (round((r1 * (1 - opacity)) + (r2 * opacity)),
-					round((g1 * (1 - opacity)) + (g2 * opacity)),
-					round((b1 * (1 - opacity)) + (b2 * opacity)))
-
-
-	def blend(self, pixel, opacity):
-		for y in range(self.height):
-			for x in range(self.width):
-				self.setpixel(x, y, self._blendpixel(self.getpixel(x, y), pixel, opacity))
-		return self
-
-	def lighten(self, opacity, maxopacity = 1):
-		if opacity > maxopacity:
-			opacity = maxopacity
-		assert(0 <= opacity <= 1)
-		return self.blend((255, 255, 255), opacity)
-
-	def darken(self, opacity, maxopacity = 1):
-		if opacity > maxopacity:
-			opacity = maxopacity
-		assert(0 <= opacity <= 1)
-		return self.blend((0, 0, 0), opacity)
-
-	def invert(self):
-		for i in range(len(self._data)):
-			self._data[i] = 255 - self._data[i]
-		return self
-
-	def setto(self, pixel):
-		self._data = bytearray([ pixel[0], pixel[1], pixel[2] ]) * self.pixelcnt
-
-	def rotate(self, degrees):
-		assert(isinstance(degrees, int))
-		degrees %= 360
-		if degrees == 90:
-			copy = PnmPicture().new(self.height, self.width)
-			for y in range(self.height):
-				for x in range(self.width):
-					pix = self.getpixel(x, y)
-					copy.setpixel(self.height - y - 1, x, pix)
-			(self._width, self._height) = (self._height, self._width)
-			self._data = copy._data
-		elif degrees == 270:
-			copy = PnmPicture().new(self.height, self.width)
-			for y in range(self.height):
-				for x in range(self.width):
-					pix = self.getpixel(x, y)
-					copy.setpixel(y, self._width - 1 - x, pix)
-			(self._width, self._height) = (self._height, self._width)
-			self._data = copy._data
-		elif degrees == 180:
-			copy = PnmPicture().new(self.height, self.width)
-			for y in range(self.height):
-				for x in range(self.width):
-					pix = self.getpixel(x, y)
-					copy.setpixel(self._width - 1 - x, self._height - 1 - y, pix)
-			self._data = copy._data
-		elif degrees == 0:
-			pass
-		else:
-			raise Exception("Only multiples of 90° are supported at the moment.")
-		return self
-
-	def applystencilpixel(self, x, y, stencil, source):
-		sumpx = [0, 0, 0]
-		for xoffset in range(stencil.width):
-			for yoffset in range(stencil.height):
-				picx = x + xoffset - stencil.xoffset
-				picy = y + yoffset - stencil.yoffset
-				if (0 <= picx < source.width) and (0 <= picy < source.height):
-					srcpix = source.getpixel(picx, picy)
-					weight = stencil[(xoffset, yoffset)]
-					sumpx[0] += weight * srcpix[0]
-					sumpx[1] += weight * srcpix[1]
-					sumpx[2] += weight * srcpix[2]
-		sumpx = [ round(element / stencil.weightsum) for element in sumpx ]
-		sumpx = [ 0 if (element < 0) else element for element in sumpx ]
-		sumpx = [ 255 if (element > 255) else element for element in sumpx ]
-		pixel = tuple(sumpx)
-		self.setpixel(x, y, pixel)
-		return self
-
-	def applystencil(self, stencil, source):
-		copy = self.clone()
-		for x in range(self.width):
-			for y in range(self.height):
-				self.applystencilpixel(x, y, stencil, copy)
-		return self
-
+#	def getsubpicture(self, offsetx, offsety, width, height):
+#		assert(offsetx + width <= self.width)
+#		assert(offsety + height <= self.height)
+#		subpic = PnmPicture().new(width, height)
+#		subpic.blitsubpicture(-offsetx, -offsety, self)
+#		return subpic
+#
+#	def blitsubpicture(self, offsetx, offsety, subpic):
+#		#print("Blitting %s onto %s @ %d, %d" % (subpic, self, offsetx, offsety))
+#		subdata = subpic._data
+#
+#		src_y_start = max(0, -offsety)
+#		src_y_end = min(subpic.height, self.height - offsety)
+#
+#		src_x_start = max(0, -offsetx)
+#		src_x_end = min(subpic.width, self.width - offsetx)
+#		if src_x_start >= src_x_end:
+#			# Complete X clipping, no blitting necessary
+#			return
+#
+#		for yline in range(src_y_start, src_y_end):
+#			src_o_start = subpic._getoffset(src_x_start, yline)
+#			src_o_end = subpic._getoffset(src_x_end - 1, yline) + 3
+#
+#			dst_o_start = self._getoffset(src_x_start + offsetx, yline + offsety)
+#			dst_o_end = self._getoffset(src_x_end + offsetx - 1, yline + offsety) + 3
+#			self._data[dst_o_start : dst_o_end] = subpic._data[src_o_start : src_o_end]
+#
+#	def avgcolor(self):
+#		(rsum, gsum, bsum) = (0, 0, 0)
+#		for (r, g, b) in self:
+#			rsum += r
+#			gsum += g
+#			bsum += b
+#		r = round(rsum / self.pixelcnt)
+#		g = round(gsum / self.pixelcnt)
+#		b = round(bsum / self.pixelcnt)
+#		return (r, g, b)
+#
+#	@staticmethod
+#	def _blendpixel(pixel1, pixel2, opacity):
+#		(r1, g1, b1) = pixel1
+#		(r2, g2, b2) = pixel2
+#		return (round((r1 * (1 - opacity)) + (r2 * opacity)),
+#					round((g1 * (1 - opacity)) + (g2 * opacity)),
+#					round((b1 * (1 - opacity)) + (b2 * opacity)))
+#
+#
+#	def blend(self, pixel, opacity):
+#		for y in range(self.height):
+#			for x in range(self.width):
+#				self.setpixel(x, y, self._blendpixel(self.getpixel(x, y), pixel, opacity))
+#		return self
+#
+#	def lighten(self, opacity, maxopacity = 1):
+#		if opacity > maxopacity:
+#			opacity = maxopacity
+#		assert(0 <= opacity <= 1)
+#		return self.blend((255, 255, 255), opacity)
+#
+#	def darken(self, opacity, maxopacity = 1):
+#		if opacity > maxopacity:
+#			opacity = maxopacity
+#		assert(0 <= opacity <= 1)
+#		return self.blend((0, 0, 0), opacity)
+#
+#	def invert(self):
+#		for i in range(len(self._data)):
+#			self._data[i] = 255 - self._data[i]
+#		return self
+#
+#	def setto(self, pixel):
+#		self._data = bytearray([ pixel[0], pixel[1], pixel[2] ]) * self.pixelcnt
+#
+#	def rotate(self, degrees):
+#		assert(isinstance(degrees, int))
+#		degrees %= 360
+#		if degrees == 90:
+#			copy = PnmPicture().new(self.height, self.width)
+#			for y in range(self.height):
+#				for x in range(self.width):
+#					pix = self.getpixel(x, y)
+#					copy.setpixel(self.height - y - 1, x, pix)
+#			(self._width, self._height) = (self._height, self._width)
+#			self._data = copy._data
+#		elif degrees == 270:
+#			copy = PnmPicture().new(self.height, self.width)
+#			for y in range(self.height):
+#				for x in range(self.width):
+#					pix = self.getpixel(x, y)
+#					copy.setpixel(y, self._width - 1 - x, pix)
+#			(self._width, self._height) = (self._height, self._width)
+#			self._data = copy._data
+#		elif degrees == 180:
+#			copy = PnmPicture().new(self.height, self.width)
+#			for y in range(self.height):
+#				for x in range(self.width):
+#					pix = self.getpixel(x, y)
+#					copy.setpixel(self._width - 1 - x, self._height - 1 - y, pix)
+#			self._data = copy._data
+#		elif degrees == 0:
+#			pass
+#		else:
+#			raise Exception("Only multiples of 90° are supported at the moment.")
+#		return self
+#
+#	def applystencilpixel(self, x, y, stencil, source):
+#		sumpx = [0, 0, 0]
+#		for xoffset in range(stencil.width):
+#			for yoffset in range(stencil.height):
+#				picx = x + xoffset - stencil.xoffset
+#				picy = y + yoffset - stencil.yoffset
+#				if (0 <= picx < source.width) and (0 <= picy < source.height):
+#					srcpix = source.getpixel(picx, picy)
+#					weight = stencil[(xoffset, yoffset)]
+#					sumpx[0] += weight * srcpix[0]
+#					sumpx[1] += weight * srcpix[1]
+#					sumpx[2] += weight * srcpix[2]
+#		sumpx = [ round(element / stencil.weightsum) for element in sumpx ]
+#		sumpx = [ 0 if (element < 0) else element for element in sumpx ]
+#		sumpx = [ 255 if (element > 255) else element for element in sumpx ]
+#		pixel = tuple(sumpx)
+#		self.setpixel(x, y, pixel)
+#		return self
+#
+#	def applystencil(self, stencil, source):
+#		copy = self.clone()
+#		for x in range(self.width):
+#			for y in range(self.height):
+#				self.applystencilpixel(x, y, stencil, copy)
+#		return self
+#
 	def __eq__(self, other):
-		return (self.width == other.width) and (self.height == other.height) and (self._data == other._data)
+		return (self.width == other.width) and (self.height == other.height) and (self.img_format == other.img_format) and (self._data == other._data)
 
 	def __hash__(self):
 		return hash(self.data)
-
-	def __iter__(self):
-		for i in range(0, len(self._data), 3):
-			yield (self._data[i + 0], self._data[i + 1], self._data[i + 2])
-
+#
+#	def __iter__(self):
+#		for i in range(0, len(self._data), 3):
+#			yield (self._data[i + 0], self._data[i + 1], self._data[i + 2])
+#
 	def __str__(self):
-		if self._data is None:
-			return "No picture data loaded"
-		else:
-			return "%d x %d (%d bytes)" % (self._width, self._height, len(self._data))
+		return "%sImg %d x %d (%d bytes)" % (self.img_format.name, self.width, self.height, len(self._data))
 
 
 class FilterStencil(object):
@@ -484,6 +457,10 @@ if __name__ == "__main__":
 #	pic.applystencil(stencil, pic)
 #	pic.writefile("bar.pnm")
 
-	pic = PnmPicture()
-	pic.readfile("pnm_example_P4.pnm")
+	for imgtype in [ 2, 3, 5, 6 ]:
+		infilename = "pnmtest_P%d.pnm" % (imgtype)
+		outfilename = "outtest_P%d.pnm" % (imgtype)
+		img = PnmPicture.read_file(infilename)		
+		img.write_file(outfilename)
+		print(img)
 
