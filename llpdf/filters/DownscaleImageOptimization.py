@@ -23,6 +23,7 @@
 import collections
 from .PDFFilter import PDFFilter
 from llpdf.img.PDFImage import PDFImageType
+from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
 from llpdf.interpreter.GraphicsInterpreter import GraphicsInterpreter
@@ -39,27 +40,43 @@ class DownscaleImageOptimization(PDFFilter):
 		self._max_image_extents[image_xref] = (w, h)
 		self._draw_cmds[image_xref].append(draw_cmd)
 
-	def _save_image(self, subdir, img_object):
+	def _save_image(self, image, image_xref, text):
 		if self._args.saveimgdir is not None:
-			img = img_object.get_image()
-			print(img_object.content)
-			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, subdir, img_object.objid, img.extension)
-			img.writefile(filename)
+			self._log.debug("Saving %s", str(image))
+			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, text, image_xref.objid, image.extension)
+			image.writefile(filename)
+			if image.alpha is not None:
+				filename = "%s/%s_%04d_alpha.%s" % (self._args.saveimgdir, text, image_xref.objid, image.extension)
+				image.alpha.writefile(filename)
 
-	def _rescale(self, image_obj, scale_factor):
-		img = image_obj.get_image()
-
-		if (img.imgtype == PDFImageType.FlateDecode) and (self._args.jpg_images):
+	def _rescale_image(self, image, scale_factor):
+		if (image.imgtype == PDFImageType.FlateDecode) and (self._args.jpg_images):
 			target_type = PDFImageType.DCTDecode
 		else:
-			target_type = img.imgtype
-		self._log.debug("Resampling %s to %s with scale factor %.3f", img, target_type.name, scale_factor)
-		img = img.reformat(target_type, scale_factor = scale_factor)
+			target_type = image.imgtype
+		self._log.debug("Resampling %s (%d bytes) to %s with scale factor %.3f", image, image.total_size, target_type.name, scale_factor)
+		reformatter = ImageReformatter(target_format = target_type, scale_factor = scale_factor)
+		resampled_image = reformatter.reformat(image)
+		return resampled_image
 
-		new_obj = PDFObject.create_image(image_obj.objid, image_obj.gennum, img)
-		self._optimized(len(image_obj), len(new_obj))
-		self._save_image("resampled", new_obj)
-		image_obj.replace_by(new_obj)
+	@staticmethod
+	def _calculate_dpi(image, maxw_mm, maxh_mm):
+		maxw_inches = maxw_mm / 25.4
+		maxh_inches = maxh_mm / 25.4
+		current_dpi_w = image.width / maxw_inches
+		current_dpi_h = image.height / maxh_inches
+		current_dpi = min(current_dpi_w, current_dpi_h)
+		return current_dpi
+
+	def _replace_image(self, img_xref, resampled_image):
+		image_meta = self._pdf.lookup(img_xref).content
+		alpha_xref = image_meta.get(PDFName("/SMask"))
+
+		new_image_obj = PDFObject.create_image(img_xref.objid, img_xref.gennum, resampled_image, alpha_xref = alpha_xref)
+		self._pdf.replace_object(new_image_obj)
+		if resampled_image.alpha:
+			new_alpha_obj = PDFObject.create_image(alpha_xref.objid, alpha_xref.gennum, resampled_image.alpha)
+			self._pdf.replace_object(new_alpha_obj)
 
 	def run(self):
 		self._max_image_extents = { }
@@ -72,24 +89,23 @@ class DownscaleImageOptimization(PDFFilter):
 			interpreter.run(page_content)
 
 		for (img_xref, (maxw_mm, maxh_mm)) in self._max_image_extents.items():
-			self._log.debug("Estimated image %s to have maximum dimensions of %.1f x %.1f mm", img_xref, maxw_mm, maxh_mm)
 			image = self._pdf.get_image(img_xref)
-			self._save_image("original", image)
+			self._save_image(image, img_xref, "original")
 
-		if False:
-			maxw_inches = maxw_mm / 25.4
-			maxh_inches = maxh_mm / 25.4
-			current_dpi_w = pixel_w / maxw_inches
-			current_dpi_h = pixel_h / maxh_inches
-			current_dpi = min(current_dpi_w, current_dpi_h)
-			if self._args.verbose:
-				self._log.debug("Current resolution of %s: %.0f dpi", image, current_dpi)
-
+			current_dpi = self._calculate_dpi(image, maxw_mm, maxh_mm)
 			scale_factor = min(self._args.target_dpi / current_dpi, 1)
-			self._rescale(image, scale_factor)
+			self._log.debug("Estimated image %s to have maximum dimensions of %.1f x %.1f mm (%d dpi), scale = %.3f", img_xref, maxw_mm, maxh_mm, current_dpi, scale_factor)
 
-			draw_commands = self._draw_cmds[img_xref]
-			pattern_draw_commands = [ draw_command for draw_command in draw_commands if draw_command.drawtype == "pattern" ]
-			if len(pattern_draw_commands) != 0:
-				print(pattern_draw_commands)
+			resampled_image = self._rescale_image(image, scale_factor)
+			self._save_image(resampled_image, img_xref, "resampled")
+			self._log.debug("Resulting image after resampling: %s (%d bytes, i.e., %+d bytes)", resampled_image, resampled_image.total_size, resampled_image.total_size - image.total_size)
+
+			self._optimized(image.total_size, resampled_image.total_size)
+			self._replace_image(img_xref, resampled_image)
+
+#		if False:
+#			draw_commands = self._draw_cmds[img_xref]
+#			pattern_draw_commands = [ draw_command for draw_command in draw_commands if draw_command.drawtype == "pattern" ]
+#			if len(pattern_draw_commands) != 0:
+#				print(pattern_draw_commands)
 

@@ -100,11 +100,6 @@ class PDFFile(object):
 			else:
 				print("Cannot determine phyiscal extents of image, scaling probably done in page code :-(")
 
-	def delete_object(self, objid, gennum):
-		key = (objid, gennum)
-		if key in self._objs:
-			del self._objs[key]
-
 	@property
 	def pages(self):
 		root_obj = self.lookup(self._trailer[PDFName("/Root")])
@@ -205,4 +200,15 @@ class PDFFile(object):
 			alpha_channel = self.lookup(image.content[PDFName("/SMask")])
 		else:
 			alpha_channel = None
-		return PDFImage.create_from_object(image, alpha_channel)
+		image = PDFImage.create_from_object(image, alpha_channel)
+		self._log.debug("Created image from %s with alpha %s: %s",img_xref, alpha_channel, image)
+		return image
+
+	def delete_object(self, objid, gennum):
+		key = (objid, gennum)
+		if key in self._objs:
+			del self._objs[key]
+
+	def replace_object(self, obj):
+		self._objs[(obj.objid, obj.gennum)] = obj
+		return self

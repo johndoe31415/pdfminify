@@ -48,15 +48,6 @@ class PnmPicture(object):
 		PnmPictureFormat.Pixmap:	"P6",
 	}
 
-	# Both bitmaps and graymaps take one byte per pixel internall, even
-	# when PNM bitmaps only take 1 bit per pixel (i.e., eight pixels
-	# per byte)
-	_BYTES_PER_PIXEL = {
-		PnmPictureFormat.Bitmap:	1,
-		PnmPictureFormat.Graymap:	1,
-		PnmPictureFormat.Pixmap:	3,
-	}
-
 	def __init__(self, width, height, data, img_format):
 		assert(isinstance(width, int))
 		assert(isinstance(height, int))
@@ -67,14 +58,25 @@ class PnmPicture(object):
 		self._data = data
 		self._img_format = img_format
 
-		bytes_per_pixel = self._BYTES_PER_PIXEL[self._img_format]
-		expected_size = bytes_per_pixel * self._width * self._height
+		expected_size = self.expected_filesize(self._width, self._height, self._img_format)
 		if expected_size != len(self._data):
 			raise Exception("Expected %d bytes of data for a %d x %d image (type %s). Got %d bytes instead." % (expected_size, self._width, self._height, self._img_format.name, len(data)))
 
 	def clone(self):
 		return PnmPicture(self.width, self.height, bytearray(self.data), self.img_format)
-	
+
+	@classmethod
+	def expected_filesize(cls, width, height, img_format):
+		if img_format == PnmPictureFormat.Pixmap:
+			return width * height * 3
+		elif img_format == PnmPictureFormat.Graymap:
+			return width * height * 1
+		elif img_format == PnmPictureFormat.Bitmap:
+			byte_width = (width + 7) // 8
+			return byte_width * height * 1
+		else:
+			raise Exception(NotImplemented)
+
 	@property
 	def width(self):
 		return self._width
@@ -94,10 +96,6 @@ class PnmPicture(object):
 	@property
 	def pixelcnt(self):
 		return self.width * self.height
-	
-	@property
-	def bytes_per_pixel(self):
-		return self._BYTES_PER_PIXEL[self.img_format]
 
 	@classmethod
 	def _read_line(cls, f):
@@ -106,6 +104,33 @@ class PnmPicture(object):
 			line = line.decode("utf-8").rstrip("\r\n")
 			if not line.startswith("#"):
 				return line
+
+#	@classmethod
+#	def create_from_raw_data(cls, width, height, raw_data, img_format):
+#		"""This is similar to the constructor but different in one internal
+#		way: It takes 'data' as raw PNM data (e.g., eight pixels per byte in
+#		case of a Bitmap), while the constructor already handles the internal
+#		file format."""
+#		if img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
+#			data = raw_data
+#		elif img_format == PnmPictureFormat.Bitmap:
+#			pixelcnt = width * height
+#			bytes_per_pixel = cls._BYTES_PER_PIXEL[img_format]
+#			data = bytearray(pixelcnt * bytes_per_pixel)
+#			byte_width = (width + 7) // 8
+#			offset = 0
+#			for (index, value) in enumerate(raw_data):
+#				y = index // byte_width
+#				for bit in range(8):
+#					x = (8 * (index % byte_width)) + bit
+#					if x < width:
+#						pixel = int((value >> bit) != 0) * 255
+#						data[offset] = pixel
+#						offset += 1
+#		else:
+#			raise Exception(NotImplemented)
+#
+#		return cls(width = width, height = height, data = data, img_format = img_format)
 
 	@classmethod
 	def read_file(cls, filename):
@@ -116,7 +141,6 @@ class PnmPicture(object):
 				raise Exception("This image type (%s) is not supported at the moment." % (data_format))
 
 			(encoding, img_format) = cls._MAGIC_NUMBERS[data_format]
-			bytes_per_pixel = cls._BYTES_PER_PIXEL[img_format]
 
 			# Then the image geometry
 			geometry = cls._read_line(f)
@@ -129,35 +153,15 @@ class PnmPicture(object):
 			else:
 				bpp = int(cls._read_line(f))
 				assert(bpp == 255)
-		
-			if img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
-				# RGB
-				if encoding == "binary":
-					data = bytearray(f.read())
-				else:
-					data = bytearray(pixelcnt * bytes_per_pixel)
-					for i in range(pixelcnt * bytes_per_pixel):
-						data[i] = int(f.readline())
-			elif img_format == PnmPictureFormat.Bitmap:
-				if encoding == "binary":
-					raw_data = bytearray(f.read())
-					data = bytearray(pixelcnt * bytes_per_pixel)
-					byte_width = (width + 7) // 8
-					target = 0
-					for (index, value) in enumerate(raw_data):
-						y = index // byte_width
-						for bit in range(8):
-							x = (8 * (index % byte_width)) + bit
-							if x < width:
-								pixel = int((value >> bit) != 0) * 255
-								data[target] = pixel
-								target += 1
-				else:
-					raise Exception(NotImplemented)
-			else:
-				raise Exception(NotImplemented)
 
-			return cls(width = width, height = height, data = data, img_format = img_format)
+			if encoding == "binary":
+				raw_data = bytearray(f.read())
+			else:
+				raw_data = bytearray(pixelcnt * bytes_per_pixel)
+				for i in range(pixelcnt * bytes_per_pixel):
+					raw_data[i] = int(f.readline())
+			# TODO: This will fail for ASCII Bitmaps
+			return cls(width = width, height = height, data = raw_data, img_format = img_format)
 
 	def _getoffset(self, x, y):
 		assert(0 <= x < self.width)
@@ -222,12 +226,11 @@ class PnmPicture(object):
 	def write_file(self, filename):
 		with open(filename, "wb") as f:
 			save_format = self._SAVE_FORMAT[self.img_format]
-			if save_format == "P4":
-				raise Exception(NotImplemented)
 			f.write(("%s\n" % (save_format)).encode("ascii"))
 			f.write(b"# CREATOR: PnmPicture.py\n")
 			f.write(("%d %d\n" % (self._width, self._height)).encode("ascii"))
-			f.write(b"255\n")
+			if self.img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
+				f.write(b"255\n")
 			f.write(self._data)
 		return self
 
@@ -460,7 +463,7 @@ if __name__ == "__main__":
 	for imgtype in [ 2, 3, 5, 6 ]:
 		infilename = "pnmtest_P%d.pnm" % (imgtype)
 		outfilename = "outtest_P%d.pnm" % (imgtype)
-		img = PnmPicture.read_file(infilename)		
+		img = PnmPicture.read_file(infilename)
 		img.write_file(outfilename)
 		print(img)
 

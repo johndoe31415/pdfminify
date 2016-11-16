@@ -27,7 +27,7 @@ import zlib
 import enum
 import subprocess
 from tempfile import NamedTemporaryFile
-from .PnmPicture import PnmPicture
+from .PnmPicture import PnmPictureFormat, PnmPicture
 from llpdf.types.PDFName import PDFName
 
 class PDFImageType(enum.IntEnum):
@@ -40,21 +40,28 @@ class PDFImageColorSpace(enum.IntEnum):
 	DeviceGray = 2
 
 class PDFImage(object):
-	def __init__(self, width, height, colorspace, imgdata, imgtype):
+	def __init__(self, width, height, colorspace, bits_per_component, imgdata, imgtype):
 		self._width = width
 		self._height = height
 		self._colorspace = colorspace
+		self._bits_per_component = bits_per_component
 		self._imgdata = imgdata
 		self._imgtype = imgtype
 		self._alpha = None
 		assert(isinstance(self._imgtype, PDFImageType))
 
+	def set_alpha(self, alpha_image):
+		assert(self.width == alpha_image.width)
+		assert(self.height == alpha_image.height)
+		self._alpha = alpha_image
+
 	@classmethod
 	def create_raw_from_object(cls, xobj):
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
-		filter_info = xobj.content[PDFName("/Filter")]
 		colorspace_info = xobj.content[PDFName("/ColorSpace")]
+		bits_per_component = xobj.content[PDFName("/BitsPerComponent")]
+		filter_info = xobj.content[PDFName("/Filter")]
 		if isinstance(filter_info, list):
 			if len(filter_info) != 1:
 				raise Exception("Multi-filter application is unsupported as of now: %s." % (filter_info))
@@ -72,8 +79,8 @@ class PDFImage(object):
 		}.get(colorspace_info)
 		if colorspace is None:
 			raise Exception("Unsupported image color space '%s'." % (colorspace_info))
-		return cls(width = width, height = height, colorspace = colorspace, imgdata = xobj.stream, imgtype = imgtype)
-	
+		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, imgtype = imgtype)
+
 	@classmethod
 	def create_from_object(cls, xobj, alpha_xobj = None):
 		image = cls.create_raw_from_object(xobj)
@@ -103,16 +110,31 @@ class PDFImage(object):
 		return self._colorspace
 
 	@property
+	def bits_per_component(self):
+		return self._bits_per_component
+
+	@property
 	def alpha(self):
 		return self._alpha
 
 	@property
+	def total_size(self):
+		size = len(self)
+		if self.alpha is not None:
+			size += len(self.alpha)
+		return size
+
+	@property
 	def extension(self):
+		return self.extension_for_imgtype(self.imgtype)
+
+	@classmethod
+	def extension_for_imgtype(cls, imgtype):
 		return {
 			PDFImageType.FlateDecode:		"pnm",
 			PDFImageType.RunLengthDecode:	"pnm",
 			PDFImageType.DCTDecode:			"jpg",
-		}[self.imgtype]
+		}[imgtype]
 
 	@staticmethod
 	def _rle_decode(rle_data):
@@ -148,19 +170,15 @@ class PDFImage(object):
 
 	def get_pnm(self):
 		pixeldata = self.get_pixeldata()
-		if self.colorspace == PDFImageColorSpace.DeviceRGB:
-			if self.width * self.height * 3 == len(pixeldata):
-				img = PnmPicture.fromdata(self.width, self.height, pixeldata)
-			elif self.width * self.height * 1 == len(pixeldata):
-				# Image is apparently grayscale, but was declared as RGB!
-				img = PnmPicture.fromdata(self.width, self.height, pixeldata, grayscale = True)
-			else:
-				raise Exception("Unexpected image size.")
-		elif self.colorspace == PDFImageColorSpace.DeviceGray:
-			img = PnmPicture.fromdata(self.width, self.height, pixeldata, grayscale = True)
+		if (self.colorspace == PDFImageColorSpace.DeviceRGB) and (self.bits_per_component == 8):
+			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Pixmap)
+		elif (self.colorspace == PDFImageColorSpace.DeviceGray) and (self.bits_per_component == 8):
+			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Graymap)
+		elif (self.colorspace == PDFImageColorSpace.DeviceGray) and (self.bits_per_component == 1):
+			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Bitmap)
 		else:
-			raise Exception("Creating PNM from colorspace %s is unsupported." % (self.colorspace))
-		return img
+			raise Exception("Creating PNM from this ColorSpace/BitsPerComponent combination is unsupported (%s/%d)." % (self.colorspace, self.bits_per_component))
+		return image
 
 	@staticmethod
 	def _get_image_width_height(filename):
@@ -173,40 +191,10 @@ class PDFImage(object):
 		result = result.groupdict()
 		return (int(result["width"]), int(result["height"]))
 
-	def reformat(self, new_img_type, scale_factor = 1, quality = None):
-		if (self.imgtype == new_img_type) and (scale_factor == 1):
-			return self
-		pnm_image = self.get_pnm()
-
-		out_extension = {
-			PDFImageType.FlateDecode:		".pnm",
-			PDFImageType.RunLengthDecode:	".pnm",
-			PDFImageType.DCTDecode:			".jpg",
-		}[new_img_type]
-		with NamedTemporaryFile(suffix = ".pnm") as orig_file, NamedTemporaryFile(suffix = out_extension) as resampled_file:
-			pnm_image.writefile(orig_file.name)
-
-			cmd = [ "convert" ]
-			if scale_factor != 1:
-				cmd += [ "-scale", "%f%%" % (scale_factor * 100) ]
-			if new_img_type == PDFImageType.DCTDecode:
-				cmd += [ "-quality", str(quality) if (quality is not None) else "85" ]
-			cmd += [ "+repage", orig_file.name, resampled_file.name ]
-			subprocess.check_call(cmd)
-			if new_img_type == PDFImageType.FlateDecode:
-				img = PnmPicture().readfile(resampled_file.name)
-				imgdata = zlib.compress(img.data)
-			else:
-				with open(resampled_file.name, "rb") as f:
-					imgdata = f.read()
-			(new_width, new_height) = self._get_image_width_height(resampled_file.name)
-			image = PDFImage(new_width, new_height, self.colorspace, imgdata, new_img_type)
-			return image
-
 	def writefile(self, filename):
-		if self.imgtype == PDFImageType.FlateDecode:
+		if self.imgtype in [ PDFImageType.FlateDecode, PDFImageType.RunLengthDecode ]:
 			pnm_image = self.get_pnm()
-			pnm_image.writefile(filename)
+			pnm_image.write_file(filename)
 		else:
 			with open(filename, "wb") as f:
 				f.write(self._imgdata)
@@ -214,9 +202,12 @@ class PDFImage(object):
 	def __len__(self):
 		return len(self._imgdata)
 
+	def _raw_str(self):
+		return "%sImg<%d x %d, %s-%d>" % (self.imgtype.name, self.width, self.height, self.colorspace.name, self.bits_per_component)
+
 	def __str__(self):
 		if self.alpha is None:
-			return "%sImg<%d x %d>" % (self.imgtype.name, self.width, self.height)
+			return self._raw_str()
 		else:
-			return "%sImg<%d x %d> with alpha %s" % (self.imgtype.name, self.width, self.height, str(self.alpha))
+			return "%s with alpha %s" % (self._raw_str(), self.alpha._raw_str())
 

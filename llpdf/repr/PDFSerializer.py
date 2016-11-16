@@ -27,12 +27,11 @@ class PDFSerializer(object):
 	def __init__(self, obj):
 		self._obj = obj
 
-
 	def _serialize(self, obj):
-		if isinstance(obj, (int, float)):
-			yield str(obj)
-		elif isinstance(obj, bool):
+		if isinstance(obj, bool):
 			yield "true" if obj else "false"
+		elif isinstance(obj, (int, float)):
+			yield str(obj)
 		elif isinstance(obj, PDFName):
 			yield obj.value
 		elif isinstance(obj, (bytes, bytearray)):

@@ -69,18 +69,20 @@ class PDFObject(Comparable):
 		return result
 
 	@classmethod
-	def create_image(cls, objid, gennum, img):
+	def create_image(cls, objid, gennum, img, alpha_xref = None):
 		content = {
 			PDFName("/Type"):				PDFName("/XObject"),
 			PDFName("/Subtype"):			PDFName("/Image"),
 			PDFName("/Filter"):				PDFName("/" + img.imgtype.name),
 			PDFName("/Width"):				img.width,
 			PDFName("/Height"):				img.height,
-			PDFName("/BitsPerComponent"):	8,
-			PDFName("/ColorSpace"):			PDFName("/DeviceRGB"),
+			PDFName("/BitsPerComponent"):	img.bits_per_component,
+			PDFName("/ColorSpace"):			PDFName("/" + img.colorspace.name),
 			PDFName("/Length"):				len(img),
 			PDFName("/Interpolate"):		True,
 		}
+		if alpha_xref is not None:
+			content[PDFName("/SMask")] = alpha_xref
 		return cls.create(objid, gennum, content, img.imgdata)
 
 	@property
