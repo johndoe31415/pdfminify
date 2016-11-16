@@ -35,7 +35,7 @@ class PDFSerializer(object):
 		elif isinstance(obj, PDFName):
 			yield obj.value
 		elif isinstance(obj, (bytes, bytearray)):
-			yield "(%s)" % (obj.decode("latin1"))
+			yield "<%s>" % (obj.hex())
 		elif isinstance(obj, PDFXRef):
 			yield "%d %d R" % (obj.objid, obj.gennum)
 		elif isinstance(obj, dict):
