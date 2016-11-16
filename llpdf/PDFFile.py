@@ -152,7 +152,13 @@ class PDFFile(object):
 	def _read_next_xref_batch(self):
 		pos = self._f.tell()
 		entries_hdr = self._f.readline()
-		entries_hdr = entries_hdr.decode("ascii").rstrip("\r\n").split()
+		try:
+			entries_hdr = entries_hdr.decode("ascii").rstrip("\r\n").split()
+		except UnicodeDecodeError:
+			# XRef Table is at end or we cannot parse this.
+			self._f.seek(pos)
+			return False
+
 		if len(entries_hdr) != 2:
 			# XRef Table is at end or we cannot parse this.
 			self._f.seek(pos)

@@ -46,7 +46,9 @@ class PDFWriter(object):
 			if obj.stream is not None:
 				self._writeline("stream")
 				self._f.write(obj.stream)
+				self._f.write(b"\n")
 				self._writeline("endstream")
+			self._writeline("endobj")
 		self._max_objid = obj.objid
 
 	def _write_xref_entry(self, offset, gennum, f_or_n):
@@ -59,7 +61,7 @@ class PDFWriter(object):
 		self._writeline("xref")
 		self._writeline("0 %d" % (1 + self._max_objid))
 		self._write_xref_entry(0, 65535, "f")
-		for objid in range(1, self._max_objid):
+		for objid in range(self._max_objid):
 			gennum = 0
 			offset = self._xref.get(PDFXRef(objid, gennum))
 			if offset is None:
