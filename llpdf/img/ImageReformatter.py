@@ -36,11 +36,12 @@ class ImageReformatter(object):
 
 	@classmethod
 	def _get_image_geometry(cls, image_filename):
-		identify_cmd = [ "identify", "-format", "%w %h\n", image_filename ]
+		identify_cmd = [ "identify", "-format", "%w %h %[colorspace] %[depth]\n", image_filename ]
 		output = subprocess.check_output(identify_cmd)
-		output = output.decode("ascii").rstrip("\r\n")
-		(width, height) = [ int(x) for x in output.split() ]
-		return (width, height)
+		output = output.decode("ascii")
+		(width, height, colorspace, depth) = output.rstrip("\r\n").split()
+		(width, height, depth) = (int(width), int(height), int(depth))
+		return (width, height, colorspace, depth)
 
 	@classmethod
 	def _encode_image(cls, image_filename, image_format):
@@ -62,9 +63,11 @@ class ImageReformatter(object):
 		else:
 			with open(image_filename, "rb") as f:
 				imgdata = f.read()
-			(width, height) = cls._get_image_geometry(image_filename)
-			colorspace = PDFImageColorSpace.DeviceRGB
-			bits_per_component = 8
+			(width, height, colorspace, bits_per_component) = cls._get_image_geometry(image_filename)
+			colorspace = {
+					"Gray":	PDFImageColorSpace.DeviceGray,
+					"sRGB":	PDFImageColorSpace.DeviceRGB,
+			}[colorspace]
 
 		return PDFImage(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = imgdata, imgtype = image_format)
 
@@ -81,13 +84,14 @@ class ImageReformatter(object):
 			if target_format == PDFImageType.DCTDecode:
 				conversion_cmd += [ "-quality", str(self._jpg_quality) ]
 
-			conversion_cmd += [ "+repage" ]
 			if grayscale:
 				conversion_cmd += [ "-colorspace", "Gray" ]
 				if self._force_one_bit_alpha:
 					conversion_cmd += [ "-depth", "1" ]
 				else:
 					conversion_cmd += [ "-depth", "8" ]
+
+			conversion_cmd += [ "+repage" ]
 			conversion_cmd += [ src_img_file.name, dst_img_file.name ]
 #			print(" ".join(conversion_cmd))
 			subprocess.check_call(conversion_cmd)
