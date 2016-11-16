@@ -79,6 +79,10 @@ class TransformationMatrix(object):
 	def f(self):
 		return self._f
 
+	@property
+	def aslist(self):
+		return [ self.a, self.b, self.c, self.d, self.e, self.f ]
+
 	def apply(self, x, y):
 		return (
 			self.a * x + self.c * y + self.e,

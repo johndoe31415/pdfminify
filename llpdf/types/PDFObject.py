@@ -83,6 +83,9 @@ class PDFObject(Comparable):
 		}
 		if alpha_xref is not None:
 			content[PDFName("/SMask")] = alpha_xref
+#		if content[PDFName("/Filter")] == PDFName("/DCTDecode"):
+#			content[PDFName("/Width")] = 1
+#			content[PDFName("/Height")] = 1
 		return cls.create(objid, gennum, content, img.imgdata)
 
 	@property
