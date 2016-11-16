@@ -30,7 +30,7 @@ from llpdf.interpreter.GraphicsInterpreter import GraphicsInterpreter
 
 class DownscaleImageOptimization(PDFFilter):
 	def _draw_callback(self, draw_cmd):
-		self._log.debug("Interpreter found image: %s", draw_cmd)
+		self._log.debug("Interpreter found %s image at %.1f, %.1f mm with extents %.1f x %.1f mm", draw_cmd.drawtype, draw_cmd.extents.x, draw_cmd.extents.y, draw_cmd.extents.width, draw_cmd.extents.height)
 		image_xref = draw_cmd.image_obj.xref
 		(w, h) = (abs(draw_cmd.extents.width), abs(draw_cmd.extents.height))
 		if image_xref in self._max_image_extents:
