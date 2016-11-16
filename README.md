@@ -30,10 +30,10 @@ TPG, which has its own license). Later versions of the GPL are explicitly
 excluded.
 
 # Requirements
-pdfminify uses two external tools: file and convert (from ImageMagick). It uses
-the former to determine the width/height of image files and the latter to
-convert images from PNM (the internal format that pdfminify is capable of
-writing natively) to JPEG.
+pdfminify uses two external tools: identify and convert (both from
+ImageMagick). It uses the former to determine the width, height, colorspace and
+bits per component of image files and the latter to convert images from PNM
+(the internal format that pdfminify is capable of writing natively) to JPEG.
 
 # PDF reading/writing
 pdfminify uses its own PDF parser because for this particular purpose, neither
