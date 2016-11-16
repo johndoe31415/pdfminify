@@ -176,6 +176,7 @@ class PDFImage(object):
 			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Graymap)
 		elif (self.colorspace == PDFImageColorSpace.DeviceGray) and (self.bits_per_component == 1):
 			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Bitmap)
+			image.invert()
 		else:
 			raise Exception("Creating PNM from this ColorSpace/BitsPerComponent combination is unsupported (%s/%d)." % (self.colorspace, self.bits_per_component))
 		return image

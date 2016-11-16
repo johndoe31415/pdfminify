@@ -300,10 +300,8 @@ class PnmPicture(object):
 #		assert(0 <= opacity <= 1)
 #		return self.blend((0, 0, 0), opacity)
 #
-#	def invert(self):
-#		for i in range(len(self._data)):
-#			self._data[i] = 255 - self._data[i]
-#		return self
+	def invert(self):
+		self._data = bytearray((~x) & 0xff for x in self._data)
 #
 #	def setto(self, pixel):
 #		self._data = bytearray([ pixel[0], pixel[1], pixel[2] ]) * self.pixelcnt

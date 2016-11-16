@@ -55,7 +55,7 @@ class DownscaleImageOptimization(PDFFilter):
 		else:
 			target_type = image.imgtype
 		self._log.debug("Resampling %s (%d bytes) to %s with scale factor %.3f", image, image.total_size, target_type.name, scale_factor)
-		reformatter = ImageReformatter(target_format = target_type, scale_factor = scale_factor)
+		reformatter = ImageReformatter(target_format = target_type, scale_factor = scale_factor, force_one_bit_alpha = self._args.one_bit_alpha)
 		resampled_image = reformatter.reformat(image)
 		return resampled_image
 

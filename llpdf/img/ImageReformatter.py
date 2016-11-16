@@ -28,10 +28,11 @@ from llpdf.img.PDFImage import PDFImage, PDFImageType, PDFImageColorSpace
 from llpdf.img.PnmPicture import PnmPicture, PnmPictureFormat
 
 class ImageReformatter(object):
-	def __init__(self, target_format, scale_factor = 1, jpg_quality = 85):
+	def __init__(self, target_format, scale_factor = 1, jpg_quality = 85, force_one_bit_alpha = False):
 		self._target_format = target_format
 		self._scale_factor = scale_factor
 		self._jpg_quality = jpg_quality
+		self._force_one_bit_alpha = force_one_bit_alpha
 
 	@classmethod
 	def _get_image_geometry(cls, image_filename):
@@ -45,6 +46,9 @@ class ImageReformatter(object):
 	def _encode_image(cls, image_filename, image_format):
 		if image_format == PDFImageType.FlateDecode:
 			img = PnmPicture.read_file(image_filename)
+			if img.img_format == PnmPictureFormat.Bitmap:
+				# PDFs use exactly inverted syntax for 1-bit images
+				img.invert()
 			imgdata = zlib.compress(img.data)
 			(colorspace, bits_per_component) = {
 				PnmPictureFormat.Bitmap:		(PDFImageColorSpace.DeviceGray, 1),
@@ -79,7 +83,11 @@ class ImageReformatter(object):
 
 			conversion_cmd += [ "+repage" ]
 			if grayscale:
-				conversion_cmd += [ "-colorspace", "Gray", "-depth", "1" ]
+				conversion_cmd += [ "-colorspace", "Gray" ]
+				if self._force_one_bit_alpha:
+					conversion_cmd += [ "-depth", "1" ]
+				else:
+					conversion_cmd += [ "-depth", "8" ]
 			conversion_cmd += [ src_img_file.name, dst_img_file.name ]
 #			print(" ".join(conversion_cmd))
 			subprocess.check_call(conversion_cmd)
