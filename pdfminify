@@ -35,8 +35,8 @@ def _cropbox(text):
 
 parser = FriendlyArgumentParser()
 parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
-parser.add_argument("--jpg-images", action = "store_true", help = "Convert images to JPEGs.")
-parser.add_argument("--jpg-quality", metavar = "percent", type = int, default = 85, help = "When converting images to JPEG, gives the compression quality from 0-100 (higher is better, but also larger).")
+parser.add_argument("--jpeg-images", action = "store_true", help = "Convert images to JPEGs.")
+parser.add_argument("--jpeg-quality", metavar = "percent", type = int, default = 85, help = "When converting images to JPEG, gives the compression quality from 0-100 (higher is better, but also larger).")
 parser.add_argument("--one-bit-alpha", action = "store_true", help = "Force all alpha channels in images to use one-bit depth. This will make transparent images have rougher edges, but may save additional space.")
 parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Additionally add a /CropBox to all pages of the PDF file. Must be given in the format x,y,w,h.")
 parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit that is used for command line processing. Can be any of %(choices)s, defaults to %(default)s.")
