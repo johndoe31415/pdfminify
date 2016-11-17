@@ -37,7 +37,8 @@ class PDFParser(tpg.VerboseParser):
 		token float '-?\d*\.\d+'							$ float
 		token integer '-?\d+'								$ int
 		token bool 'true|false'								$ ParseTools.to_bool
-		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
+		token null 'null'									$ None
+		token pdfname_token '/[a-zA-Z0-9][-+a-zA-Z0-9]*'	$ PDFName
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 		token start_string '\(';
 		token end_string '\)\s*';
@@ -78,6 +79,7 @@ class PDFParser(tpg.VerboseParser):
 		PDFValue/e -> float/e
 					| integer/e
 					| bool/e
+					| null/e
 					| hexstring/e
 		;
 

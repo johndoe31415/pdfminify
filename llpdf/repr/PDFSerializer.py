@@ -61,7 +61,9 @@ class PDFSerializer(object):
 			yield "    " * (nesting_level)
 
 	def _serialize(self, obj, nesting_level = 0):
-		if isinstance(obj, bool):
+		if obj is None:
+			yield "null"
+		elif isinstance(obj, bool):
 			yield "true" if obj else "false"
 		elif isinstance(obj, int):
 			yield str(obj)
