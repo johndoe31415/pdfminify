@@ -23,3 +23,4 @@
 from .DownscaleImageOptimization import DownscaleImageOptimization
 from .RemoveDuplicateImageOptimization import RemoveDuplicateImageOptimization
 from .AddCropBoxFilter import AddCropBoxFilter
+from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
