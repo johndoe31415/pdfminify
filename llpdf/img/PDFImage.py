@@ -128,11 +128,23 @@ class PDFImage(object):
 	def extension(self):
 		return self.extension_for_imgtype(self.imgtype)
 
+	@property
+	def raw_extension(self):
+		return self.raw_extension_for_imgtype(self.imgtype)
+
 	@classmethod
 	def extension_for_imgtype(cls, imgtype):
 		return {
 			PDFImageType.FlateDecode:		"pnm",
 			PDFImageType.RunLengthDecode:	"pnm",
+			PDFImageType.DCTDecode:			"jpg",
+		}[imgtype]
+
+	@classmethod
+	def raw_extension_for_imgtype(cls, imgtype):
+		return {
+			PDFImageType.FlateDecode:		"z",
+			PDFImageType.RunLengthDecode:	"rle",
 			PDFImageType.DCTDecode:			"jpg",
 		}[imgtype]
 
@@ -192,8 +204,8 @@ class PDFImage(object):
 		result = result.groupdict()
 		return (int(result["width"]), int(result["height"]))
 
-	def writefile(self, filename):
-		if self.imgtype in [ PDFImageType.FlateDecode, PDFImageType.RunLengthDecode ]:
+	def writefile(self, filename, write_raw_data = False):
+		if (self.imgtype in [ PDFImageType.FlateDecode, PDFImageType.RunLengthDecode ]) and (not write_raw_data):
 			pnm_image = self.get_pnm()
 			pnm_image.write_file(filename)
 		else:

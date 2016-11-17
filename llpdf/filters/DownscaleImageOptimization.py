@@ -44,11 +44,11 @@ class DownscaleImageOptimization(PDFFilter):
 	def _save_image(self, image, image_xref, text):
 		if self._args.saveimgdir is not None:
 			self._log.debug("Saving %s", str(image))
-			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, text, image_xref.objid, image.extension)
-			image.writefile(filename)
+			filename = "%s/%s_%04d.%s" % (self._args.saveimgdir, text, image_xref.objid, image.raw_extension if self._args.raw_output else image.extension)
+			image.writefile(filename, write_raw_data = self._args.raw_output)
 			if image.alpha is not None:
-				filename = "%s/%s_%04d_alpha.%s" % (self._args.saveimgdir, text, image_xref.objid, image.extension)
-				image.alpha.writefile(filename)
+				filename = "%s/%s_%04d_alpha.%s" % (self._args.saveimgdir, text, image_xref.objid, image.alpha.raw_extension if self._args.raw_output else image.alpha.extension)
+				image.alpha.writefile(filename, write_raw_data = self._args.raw_output)
 
 	def _rescale_image(self, image, scale_factor):
 		if (image.imgtype == PDFImageType.FlateDecode) and (self._args.jpeg_images):
