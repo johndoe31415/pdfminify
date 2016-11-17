@@ -22,6 +22,7 @@
 
 import collections
 from .PDFFilter import PDFFilter
+from llpdf.Exceptions import UnsupportedImageException
 from llpdf.img.PDFImage import PDFImageType
 from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
@@ -90,7 +91,11 @@ class DownscaleImageOptimization(PDFFilter):
 			interpreter.run(page_content)
 
 		for (img_xref, (maxw_mm, maxh_mm)) in self._max_image_extents.items():
-			image = self._pdf.get_image(img_xref)
+			try:
+				image = self._pdf.get_image(img_xref)
+			except UnsupportedImageException as e:
+				self._log.error("Ingoring unsupported image %s: %s" % (img_xref, e))
+				continue
 			self._save_image(image, img_xref, "original")
 
 			current_dpi = self._calculate_dpi(image, maxw_mm, maxh_mm)

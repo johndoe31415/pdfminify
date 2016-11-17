@@ -29,6 +29,7 @@ import subprocess
 from tempfile import NamedTemporaryFile
 from .PnmPicture import PnmPictureFormat, PnmPicture
 from llpdf.types.PDFName import PDFName
+from llpdf.Exceptions import UnsupportedImageException
 
 class PDFImageType(enum.IntEnum):
 	FlateDecode = 1
@@ -69,10 +70,10 @@ class PDFImage(object):
 		elif decode == [ 1, 0 ]:
 			inverted = True
 		else:
-			raise Exception("Cannot generate PDFImage object with non-trivial value decode array: %s" % (decode))
+			raise UnsupportedImageException("Cannot generate PDFImage object with non-trivial value decode array: %s" % (decode))
 		if isinstance(filter_info, list):
 			if len(filter_info) != 1:
-				raise Exception("Multi-filter application is unsupported as of now: %s." % (filter_info))
+				raise UnsupportedImageException("Multi-filter application is unsupported as of now: %s." % (filter_info))
 			filter_info = filter_info[0]
 		imgtype = {
 			PDFName("/FlateDecode"):		PDFImageType.FlateDecode,
@@ -80,14 +81,15 @@ class PDFImage(object):
 			PDFName("/RunLengthDecode"):	PDFImageType.RunLengthDecode,
 		}.get(filter_info)
 		if imgtype is None:
-			raise Exception("Cannot create image from unknown type '%s'." % (filter_info))
+			raise UnsupportedImageException("Cannot create image from unknown type '%s'." % (filter_info))
+		if isinstance(colorspace_info, list):
+			raise UnsupportedImageException("Indexed images are currently unsupported: %s" % (colorspace_info))
 		colorspace = {
 			PDFName("/DeviceRGB"):			PDFImageColorSpace.DeviceRGB,
 			PDFName("/DeviceGray"):			PDFImageColorSpace.DeviceGray,
 		}.get(colorspace_info)
 		if colorspace is None:
-			raise Exception("Unsupported image color space '%s'." % (colorspace_info))
-
+			raise UnsupportedImageException("Unsupported image color space '%s'." % (colorspace_info))
 		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, imgtype = imgtype, inverted = inverted)
 
 	@classmethod
