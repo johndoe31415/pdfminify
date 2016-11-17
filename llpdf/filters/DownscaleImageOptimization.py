@@ -104,18 +104,3 @@ class DownscaleImageOptimization(PDFFilter):
 			self._optimized(image.total_size, resampled_image.total_size)
 			self._replace_image(img_xref, resampled_image)
 
-#			draw_commands = self._draw_cmds[img_xref]
-#			pattern_draw_commands = [ draw_command for draw_command in draw_commands if draw_command.drawtype == "pattern" ]
-#			if len(pattern_draw_commands) != 0:
-#				pattern_objs = set(draw_command.pattern_obj for draw_command in pattern_draw_commands)
-#				for pattern_obj in pattern_objs:
-#					pattern_matrix = TransformationMatrix(*pattern_obj.content[PDFName("/Matrix")])
-
-#					scale_matrix = TransformationMatrix.scale(1.0)
-#					scale_matrix *= pattern_matrix
-
-#					pattern_obj.content[PDFName("/Matrix")] = pattern_matrix.aslist
-#					pattern_obj.content[PDFName("/Matrix")][3] *= 0.5
-#					print(pattern_obj, pattern_matrix, scale_matrix)
-#					print(pattern_matrix)
-
