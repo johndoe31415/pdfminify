@@ -165,7 +165,7 @@ class PDFFile(object):
 
 	def _read_xref_table(self):
 		self._log.debug("Started reading XRef table.")
-		line = self._f.readline()
+		line = self._f.readline_nonempty()
 		if line not in [ b"xref", b"xref\r" ]:
 			raise Exception("Expected XRef table to appear, but encountered %s." % (str(line)))
 

@@ -59,6 +59,11 @@ class StreamRepr(object):
 		(data, terminal) = self.read_until([ b"\n", b"\r\n", b"\r" ])
 		return data
 
+	def readline_nonempty(self):
+		while True:
+			line = self.readline()
+			if line != b"":
+				return line
 
 	@classmethod
 	def from_file(cls, f):
