@@ -62,7 +62,7 @@ class PDFWriter(object):
 		self._writeline("xref")
 		self._writeline("0 %d" % (1 + self._max_objid))
 		self._write_xref_entry(0, 65535, "f")
-		for objid in range(self._max_objid):
+		for objid in range(1, self._max_objid + 1):
 			gennum = 0
 			offset = self._xref.get(PDFXRef(objid, gennum))
 			if offset is None:
