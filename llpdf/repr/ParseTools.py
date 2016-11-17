@@ -31,16 +31,21 @@ def to_hexstring(text):
 	text = text.replace("\n", "")
 	return bytes.fromhex(text)
 
-def interpret_escape(text):
+def interpret_escape_char(text):
 	result = {
-		b"\\n":		b"\n",
-		b"\\(":		b"(",
-		b"\\)":		b")",
-		b"\\\\":	b"\\",
+		r"\r":		b"\r",
+		r"\n":		b"\n",
+		r"\(":		b"(",
+		r"\)":		b")",
+		r"\\":		b"\\",
 	}.get(text[0 : 2])
 	if result is None:
-		raise Exception("Unknown escape sequence %s in string input." % (text))
-	return result + text[2:]
+		raise Exception("Unknown escape character sequence %s in string input." % (text))
+	return result + text[2:].encode("ascii")
+
+def interpret_escape_numeric(text):
+	value = int(text[1 : 4], 8)
+	return bytes([ value ]) + text[4:].encode("ascii")
 
 def parse_using(text, parser_class):
 	try:

@@ -24,9 +24,10 @@ from llpdf.repr.PDFSerializer import PDFSerializer
 from llpdf.types.PDFXRef import PDFXRef
 
 class PDFWriter(object):
-	def __init__(self, pdf, f):
+	def __init__(self, pdf, f, pretty = False):
 		self._pdf = pdf
 		self._f = f
+		self._pretty = pretty
 		self._xref = { }
 		self._max_objid = 0
 
@@ -37,12 +38,12 @@ class PDFWriter(object):
 		self._writeline("%PDF-1.5")
 		self._f.write(b"%\xb5\xed\xae\xfb\n")
 
-	def _write_objs(self):
+	def _write_objs(self, pretty = False):
 		for obj in sorted(self._pdf):
 			self._xref[obj.xref] = self._f.tell()
 			self._writeline("%d %d obj" % (obj.objid, obj.gennum))
-			serializer = PDFSerializer(obj.content)
-			self._writeline(serializer.serialize())
+			serializer = PDFSerializer(pretty = self._pretty)
+			self._writeline(serializer.serialize(obj.content))
 			if obj.stream is not None:
 				self._writeline("stream")
 				self._f.write(obj.stream)
@@ -71,8 +72,8 @@ class PDFWriter(object):
 
 	def _write_trailer(self):
 		self._writeline("trailer")
-		serializer = PDFSerializer(self._pdf.trailer)
-		self._writeline(serializer.serialize())
+		serializer = PDFSerializer(pretty = self._pretty)
+		self._writeline(serializer.serialize(self._pdf.trailer))
 
 	def _write_finish(self):
 		self._writeline("startxref")

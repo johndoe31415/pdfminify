@@ -42,6 +42,7 @@ class PDFParser(tpg.VerboseParser):
 		token start_string '\(';
 		token end_string '\)\s*';
 		token string_content '[^\\()]+';
+		token string_escape_numeric '\\[0-7]{3}\s*';
 		token string_escape_char '\\.\s*';
 
 
@@ -87,7 +88,8 @@ class PDFParser(tpg.VerboseParser):
 
 		PDFInnerString/s ->													$ s = bytearray()
 						(
-							string_escape_char/e							$ s += ParseTools.interpret_escape(e.encode())
+							string_escape_numeric/e							$ s += ParseTools.interpret_escape_numeric(e)
+							| string_escape_char/e							$ s += ParseTools.interpret_escape_char(e)
 							| start_string/a PDFInnerString/e end_string/b	$ s += a.encode() + e + b.encode()
 							| string_content/e								$ s += e.encode("utf-8")
 						)+
