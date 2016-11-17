@@ -44,9 +44,9 @@ class PDFFile(object):
 
 		self._objs = { }
 		self._trailer = None
+		self._xref_obj = None
 		self._read_objects()
-		self._read_xref_table()
-		self._trailer = self._read_trailer()
+		self._read_endfile()
 		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
 
 	def _identify(self):
@@ -101,7 +101,11 @@ class PDFFile(object):
 
 	@property
 	def pages(self):
+		if self._trailer is None:
+			raise Exception("Cannot get pages without trailer (root node).")
 		root_obj = self.lookup(self._trailer[PDFName("/Root")])
+		if root_obj is None:
+			raise Exception("Root object is not in primary data stream (part of object stream?). Unsupported at the moment.")
 		pages_obj = self.lookup(root_obj.content[PDFName("/Pages")])
 		pagecontent_xrefs = pages_obj.content[PDFName("/Kids")]
 
@@ -143,6 +147,10 @@ class PDFFile(object):
 			self._log.debug("Read object: %s", obj)
 			self._objs[(obj.objid, obj.gennum)] = obj
 
+	def _read_textline(self):
+		line = self._f.readline_nonempty().decode("ascii").rstrip("\r\n")
+		return line
+
 	def _read_next_xref_batch(self):
 		pos = self._f.tell()
 		entries_hdr = self._f.readline()
@@ -165,27 +173,37 @@ class PDFFile(object):
 
 	def _read_xref_table(self):
 		self._log.debug("Started reading XRef table.")
-		line = self._f.readline_nonempty()
-		if line not in [ b"xref", b"xref\r" ]:
-			raise Exception("Expected XRef table to appear, but encountered %s." % (str(line)))
-
 		while True:
 			if not self._read_next_xref_batch():
 				return False
 
 	def _read_trailer(self):
 		self._log.debug("Started reading trailer.")
-		line = self._f.readline()
-		if line not in [ b"trailer", b"trailer\r" ]:
-			raise Exception("Expected trailer to appear, but encountered %s." % (str(line)))
 		(trailer_data, delimiter) = self._f.read_until([ b"startxref\r\n", b"startxref\n" ])
 		trailer_data = trailer_data.decode("latin1")
-		trailer = PDFParser.parse(trailer_data)
-		self._f.readline()
-		line = self._f.readline()
-		if line not in [ b"%%EOF", b"%%EOF\r" ]:
-			raise Exception("Expected end of file, but encountered %s." % (str(line)))
-		return trailer
+		self._trailer = PDFParser.parse(trailer_data)
+		self._f.seek(self._f.tell() - len(delimiter))
+
+	def _read_endfile(self):
+		while True:
+			line = self._read_textline()
+			if line == "xref":
+				self._read_xref_table()
+			elif line == "trailer":
+				self._read_trailer()
+			elif line == "startxref":
+				xref_offset = int(self._f.readline())
+				if self._trailer is None:
+					pos = self._f.tell()
+					self._f.seek(xref_offset)
+					xref_object = PDFObject.parse(self._f)
+					self._trailer = xref_object.content
+					self._xref_obj = self[(xref_object.objid, xref_object.gennum)]
+					self._f.seek(pos)
+			elif line == "%%EOF":
+				break
+			else:
+				raise Exception("Unknown end file token '%s'." % (line))
 
 	def read_stream(self):
 		self._f.read_until([ b"stream\r\n", b"stream\n" ])
@@ -211,3 +229,4 @@ class PDFFile(object):
 	def replace_object(self, obj):
 		self._objs[(obj.objid, obj.gennum)] = obj
 		return self
+
