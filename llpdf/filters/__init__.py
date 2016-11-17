@@ -25,3 +25,4 @@ from .RemoveDuplicateImageOptimization import RemoveDuplicateImageOptimization
 from .AddCropBoxFilter import AddCropBoxFilter
 from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
 from .ExplicitLengthFilter import ExplicitLengthFilter
+from .FlattenImageOptimization import FlattenImageOptimization

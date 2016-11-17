@@ -123,3 +123,29 @@ class ImageReformatter(object):
 
 		return reformatted_image
 
+	def flatten(self, image, background_color):
+		if image.alpha is None:
+			return image
+
+		with NamedTemporaryFile(prefix = "src_img_", suffix = "." + image.extension) as src_img_file,\
+				NamedTemporaryFile(prefix = "src_alpha_", suffix = "." + image.extension) as src_alpha_file,\
+				NamedTemporaryFile(prefix = "result_img_", suffix = ".pnm") as dst_img_file:
+			image.writefile(src_img_file.name)
+			image.alpha.writefile(src_alpha_file.name)
+			conversion_cmd = [ "convert" ]
+			conversion_cmd += [ src_img_file.name ]
+			conversion_cmd += [ "(" ]
+			conversion_cmd += [ src_alpha_file.name ]
+			conversion_cmd += [ "-colorspace", "gray", "-alpha", "off" ]
+			if image.alpha.inverted:
+				conversion_cmd += [ "-negate" ]
+			conversion_cmd += [ ")" ]
+
+			conversion_cmd += [ "-compose", "copy-opacity" ]
+			conversion_cmd += [ "-composite" ]
+			conversion_cmd += [ "-background", background_color, "-compose" ,"over", "-flatten" ]
+			conversion_cmd += [ dst_img_file.name ]
+			subprocess.check_call(conversion_cmd)
+
+			flattened_image = self._encode_image(dst_img_file.name, PDFImageType.FlateDecode)
+		return flattened_image

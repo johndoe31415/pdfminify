@@ -43,6 +43,8 @@ parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default
 parser.add_argument("--saveimgdir", metavar = "path", type = str, help = "When specified, save all handled images as individual files into the specified directory. Useful for debugging purposes and image extraction.")
 parser.add_argument("--raw-output", action = "store_true", help = "When saving images externally, save them in exactly the format in which they're also present inside the PDF. Note that this gives raw image files in some cases which do not have any header (but just contain of data).")
 parser.add_argument("--pretty-pdf", action = "store_true", help = "Write pretty PDF files, i.e., format all dictionaries so they're well-readable. Increases required file size a tiny bit, increases generation time of the PDF a little, but produces easily debuggable PDFs.")
+parser.add_argument("--remove-alpha", action = "store_true", help = "Completely remove the alpha channel (transparency) of all images. The color which transparent areas should be replaced by can be specified using the --background-color command line option.")
+parser.add_argument("--background-color", metavar = "color", type = str, default = "white", help = "When removing alpha channels, specifies the color that should be used as background. Defaults to %(default)s.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Show verbose messages during conversation. Can be specified multiple times to increase log level.")
 parser.add_argument("infile", metavar = "pdf_in", type = str, help = "Input PDF file.")
 parser.add_argument("outfile", metavar = "pdf_out", type = str, help = "Output PDF file.")
@@ -52,6 +54,7 @@ llpdf.configure_logging(args.verbose)
 
 pdf_filter_classes = [
 	llpdf.filters.RemoveDuplicateImageOptimization,
+	llpdf.filters.FlattenImageOptimization,
 	llpdf.filters.DownscaleImageOptimization,
 	llpdf.filters.AddCropBoxFilter,
 	llpdf.filters.ExplicitLengthFilter,
