@@ -59,6 +59,9 @@ class PDFImage(object):
 
 	@classmethod
 	def create_raw_from_object(cls, xobj):
+		if (PDFName("/Width") not in xobj.content):
+			raise UnsupportedImageException("Unsupported image without width: %s" % (xobj))
+
 		width = xobj.content[PDFName("/Width")]
 		height = xobj.content[PDFName("/Height")]
 		colorspace_info = xobj.content[PDFName("/ColorSpace")]

@@ -28,6 +28,8 @@ from llpdf.types.PDFXRef import PDFXRef
 
 class PDFParser(tpg.VerboseParser):
 	r"""
+		set lexer = ContextSensitiveLexer
+
 		separator space '[\s\n]+';
 
 		token start_dict '<<';
@@ -53,9 +55,9 @@ class PDFParser(tpg.VerboseParser):
 		PDFExpression/e -> PDFXRef/e
 							| PDFDict/e
 							| PDFValue/e
-							| PDFName/e
-							| PDFArray/e
 							| PDFString/e
+							| PDFArray/e
+							| PDFName/e
 		;
 
 		PDFDict/d -> start_dict								$ d = dict()
@@ -120,7 +122,8 @@ if __name__ == "__main__":
 		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
 		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
 		"[ 0.333679 0 0 0.333468 78.832642 172.074584 ]",
-		"[ 1.2345 1.2345 ]"
+		"[ 1.2345 1.2345 ]",
+		"<< /XHeight 0 /CharSet (/F) /FontFile 2992 0 R >>",
 	]
 
 	for example in examples:

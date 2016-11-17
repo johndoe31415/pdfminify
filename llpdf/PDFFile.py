@@ -48,6 +48,8 @@ class PDFFile(object):
 		self._read_objects()
 		self._read_endfile()
 		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
+		self._unpack_objstrms()
+		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
 
 	def _identify(self):
 		self._f.seek(0)
@@ -72,6 +74,10 @@ class PDFFile(object):
 	@property
 	def pattern_objects(self):
 		return [ obj for obj in self._objs.values() if obj.is_pattern ]
+
+	@property
+	def objstrm_objects(self):
+		return [ obj for obj in self._objs.values() if obj.is_objstrm ]
 
 	@property
 	def stream_objects(self):
@@ -99,6 +105,17 @@ class PDFFile(object):
 			else:
 				print("Cannot determine phyiscal extents of image, scaling probably done in page code :-(")
 
+	def _get_pages_from_pages_obj(self, pages_obj):
+		pagecontent_xrefs = pages_obj.content[PDFName("/Kids")]
+		for page_xref in pagecontent_xrefs:
+			page = self.lookup(page_xref)
+			if page.content[PDFName("/Type")] == PDFName("/Page"):
+				yield page
+			elif page.content[PDFName("/Type")] == PDFName("/Pages"):
+				yield from self._get_pages_from_pages_obj(page)
+			else:
+				raise Exception("Page object %s contains neither page nor pages (/Type = %s)." % (pages_obj, page.content[PDFName("/Type")]))
+
 	@property
 	def pages(self):
 		if self._trailer is None:
@@ -107,11 +124,9 @@ class PDFFile(object):
 		if root_obj is None:
 			raise Exception("Root object is not in primary data stream (part of object stream?). Unsupported at the moment.")
 		pages_obj = self.lookup(root_obj.content[PDFName("/Pages")])
-		pagecontent_xrefs = pages_obj.content[PDFName("/Kids")]
 
-		for page_xref in pagecontent_xrefs:
-			page = self.lookup(page_xref)
-			yield page
+		yield from self._get_pages_from_pages_obj(pages_obj)
+
 
 	@property
 	def parsed_pages(self):
@@ -204,6 +219,34 @@ class PDFFile(object):
 				break
 			else:
 				raise Exception("Unknown end file token '%s'." % (line))
+
+	def _unpack_objstrm(self, objstrm_obj):
+		if objstrm_obj.content[PDFName("/Filter")] != PDFName("/FlateDecode"):
+			self._log.warn("Cannot unpack object stream %s with unknown filter %s.", objstrm_obj, objstrm_obj.content[PDFName("/Filter")])
+			return
+		data = zlib.decompress(objstrm_obj.stream)
+		objcnt = objstrm_obj.content[PDFName("/N")]
+		first = objstrm_obj.content[PDFName("/First")]
+		self._log.debug("Object stream %s contains %d objects starting at offset %d.", objstrm_obj, objcnt, first)
+
+		header = data[:first]
+		data = data[first:]
+		header = [ int(value) for value in header.decode("ascii").replace("\n", " ").split() ]
+		for idx in range(0, len(header), 2):
+			(objid, sub_offset) = (header[idx], header[idx + 1])
+			if idx + 3 >= len(header):
+				# Last object
+				sub_obj_data = data[sub_offset : ]
+			else:
+				next_sub_offset = header[idx + 3]
+				sub_obj_data = data[sub_offset : next_sub_offset]
+			sub_obj = PDFObject(objid, 0, sub_obj_data)
+			self.replace_object(sub_obj)
+		self.delete_object(objstrm_obj.objid, objstrm_obj.gennum)
+
+	def _unpack_objstrms(self):
+		for obj in self.objstrm_objects:
+			self._unpack_objstrm(obj)
 
 	def read_stream(self):
 		self._f.read_until([ b"stream\r\n", b"stream\n" ])

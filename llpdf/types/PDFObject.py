@@ -138,6 +138,10 @@ class PDFObject(Comparable):
 	def is_pattern(self):
 		return isinstance(self.content, dict) and (self.content.get(PDFName("/PatternType")) == 1) and (self.content.get(PDFName("/PaintType")) == 1)
 
+	@property
+	def is_objstrm(self):
+		return (self.stream is not None) and isinstance(self.content, dict) and (self.content.get(PDFName("/Type")) == PDFName("/ObjStm"))
+
 	def __len__(self):
 		return 0 if self.stream is None else len(self.stream)
 
