@@ -55,11 +55,10 @@ class PDFFile(object):
 
 		pos = self._f.tell()
 
-		after_hdr = self._f.read(6)
+		after_hdr = self._f.readline()
 		if (after_hdr[0] != ord("%")) or any(value & 0x80 != 0x80 for value in after_hdr[ 1 : 5 ]):
 			self._log.warn("PDF seems to violate standard, bytes read after initial line are %s.", after_hdr)
 			self._f.seek(pos)
-
 		return version.rstrip(b"\r\n ")
 
 	@property

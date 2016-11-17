@@ -110,8 +110,12 @@ class PDFObject(Comparable):
 	@classmethod
 	def parse(cls, f):
 		pos = f.tell()
-		header = f.readline()
-		header = header.decode("ascii")
+		while True:
+			header = f.readline()			
+			header = header.decode("ascii")
+			if header.strip() == "":
+				continue
+			break
 		result = cls._OBJ_RE.match(header)
 		if not result:
 			f.seek(pos)
