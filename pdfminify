@@ -53,6 +53,7 @@ pdf_filter_classes = [
 	llpdf.filters.RemoveDuplicateImageOptimization,
 	llpdf.filters.DownscaleImageOptimization,
 	llpdf.filters.AddCropBoxFilter,
+	llpdf.filters.ExplicitLengthFilter,
 	llpdf.filters.DeleteOrphanedObjectsFilter,
 ]
 

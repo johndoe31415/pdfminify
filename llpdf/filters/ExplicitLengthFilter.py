@@ -20,8 +20,13 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-from .DownscaleImageOptimization import DownscaleImageOptimization
-from .RemoveDuplicateImageOptimization import RemoveDuplicateImageOptimization
-from .AddCropBoxFilter import AddCropBoxFilter
-from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
-from .ExplicitLengthFilter import ExplicitLengthFilter
+from .PDFFilter import PDFFilter
+from llpdf.types.PDFXRef import PDFXRef
+from llpdf.types.PDFName import PDFName
+
+class ExplicitLengthFilter(PDFFilter):
+	def run(self):
+		for obj in self._pdf:
+			if isinstance(obj.content, dict) and (PDFName("/Length") in obj.content) and isinstance(obj.content[PDFName("/Length")], PDFXRef) and (obj.stream is not None):
+				obj.content[PDFName("/Length")] = len(obj.stream)
+
