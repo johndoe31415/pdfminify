@@ -73,7 +73,7 @@ class ImageReformatter(object):
 					"sRGB":	PDFImageColorSpace.DeviceRGB,
 			}[colorspace]
 
-		return PDFImage(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = imgdata, imgtype = image_format)
+		return PDFImage(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = imgdata, imgtype = image_format, inverted = False)
 
 
 	def _reformat_channel(self, image, target_format, grayscale = False):
@@ -95,6 +95,8 @@ class ImageReformatter(object):
 				else:
 					conversion_cmd += [ "-depth", "8" ]
 
+			if image.inverted:
+				conversion_cmd += [ "-negate" ]
 			conversion_cmd += [ "+repage" ]
 			conversion_cmd += [ "-strip" ]
 			conversion_cmd += [ src_img_file.name, dst_img_file.name ]

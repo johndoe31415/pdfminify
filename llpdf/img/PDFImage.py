@@ -40,13 +40,14 @@ class PDFImageColorSpace(enum.IntEnum):
 	DeviceGray = 2
 
 class PDFImage(object):
-	def __init__(self, width, height, colorspace, bits_per_component, imgdata, imgtype):
+	def __init__(self, width, height, colorspace, bits_per_component, imgdata, imgtype, inverted):
 		self._width = width
 		self._height = height
 		self._colorspace = colorspace
 		self._bits_per_component = bits_per_component
 		self._imgdata = imgdata
 		self._imgtype = imgtype
+		self._inverted = inverted
 		self._alpha = None
 		assert(isinstance(self._imgtype, PDFImageType))
 
@@ -62,6 +63,13 @@ class PDFImage(object):
 		colorspace_info = xobj.content[PDFName("/ColorSpace")]
 		bits_per_component = xobj.content[PDFName("/BitsPerComponent")]
 		filter_info = xobj.content[PDFName("/Filter")]
+		decode = xobj.content.get(PDFName("/Decode"))
+		if (decode is None) or (decode == [ 0, 1 ]):
+			inverted = False
+		elif decode == [ 1, 0 ]:
+			inverted = True
+		else:
+			raise Exception("Cannot generate PDFImage object with non-trivial value decode array: %s" % (decode))
 		if isinstance(filter_info, list):
 			if len(filter_info) != 1:
 				raise Exception("Multi-filter application is unsupported as of now: %s." % (filter_info))
@@ -79,7 +87,8 @@ class PDFImage(object):
 		}.get(colorspace_info)
 		if colorspace is None:
 			raise Exception("Unsupported image color space '%s'." % (colorspace_info))
-		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, imgtype = imgtype)
+
+		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, imgtype = imgtype, inverted = inverted)
 
 	@classmethod
 	def create_from_object(cls, xobj, alpha_xobj = None):
@@ -112,6 +121,10 @@ class PDFImage(object):
 	@property
 	def bits_per_component(self):
 		return self._bits_per_component
+
+	@property
+	def inverted(self):
+		return self._inverted
 
 	@property
 	def alpha(self):
