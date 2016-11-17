@@ -23,20 +23,24 @@
 import time
 import subprocess
 import zlib
+import logging
 from tempfile import NamedTemporaryFile
 from llpdf.img.PDFImage import PDFImage, PDFImageType, PDFImageColorSpace
 from llpdf.img.PnmPicture import PnmPicture, PnmPictureFormat
 
 class ImageReformatter(object):
-	def __init__(self, target_format, scale_factor = 1, jpg_quality = 85, force_one_bit_alpha = False):
+	_log = logging.getLogger("llpdf.img.ImageReformatter")
+
+	def __init__(self, target_format, scale_factor = 1, jpeg_quality = 85, force_one_bit_alpha = False):
 		self._target_format = target_format
 		self._scale_factor = scale_factor
-		self._jpg_quality = jpg_quality
+		self._jpeg_quality = jpeg_quality
 		self._force_one_bit_alpha = force_one_bit_alpha
 
 	@classmethod
 	def _get_image_geometry(cls, image_filename):
 		identify_cmd = [ "identify", "-format", "%w %h %[colorspace] %[depth]\n", image_filename ]
+		cls._log.debug("Running command: %s", " ".join(identify_cmd))
 		output = subprocess.check_output(identify_cmd)
 		output = output.decode("ascii")
 		(width, height, colorspace, depth) = output.rstrip("\r\n").split()
@@ -82,7 +86,7 @@ class ImageReformatter(object):
 				conversion_cmd += [ "-scale", "%f%%" % (self._scale_factor * 100) ]
 
 			if target_format == PDFImageType.DCTDecode:
-				conversion_cmd += [ "-quality", str(self._jpg_quality) ]
+				conversion_cmd += [ "-quality", str(self._jpeg_quality) ]
 
 			if grayscale:
 				conversion_cmd += [ "-colorspace", "Gray" ]
@@ -93,7 +97,8 @@ class ImageReformatter(object):
 
 			conversion_cmd += [ "+repage" ]
 			conversion_cmd += [ src_img_file.name, dst_img_file.name ]
-#			print(" ".join(conversion_cmd))
+
+			self._log.debug("Running command: %s", " ".join(conversion_cmd))
 			subprocess.check_call(conversion_cmd)
 
 			return self._encode_image(dst_img_file.name, target_format)
