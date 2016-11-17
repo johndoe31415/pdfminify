@@ -96,6 +96,7 @@ class ImageReformatter(object):
 					conversion_cmd += [ "-depth", "8" ]
 
 			conversion_cmd += [ "+repage" ]
+			conversion_cmd += [ "-strip" ]
 			conversion_cmd += [ src_img_file.name, dst_img_file.name ]
 
 			self._log.debug("Running command: %s", " ".join(conversion_cmd))
