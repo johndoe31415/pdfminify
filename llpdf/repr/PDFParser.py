@@ -38,7 +38,7 @@ class PDFParser(tpg.VerboseParser):
 		token integer '-?\d+'								$ int
 		token bool 'true|false'								$ ParseTools.to_bool
 		token null 'null'									$ None
-		token pdfname_token '/[a-zA-Z0-9][-#+a-zA-Z0-9]*'	$ PDFName
+		token pdfname_token '/[^\s/<>\[\]()]*'				$ PDFName
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 		token start_string '\(';
 		token end_string '\)\s*';

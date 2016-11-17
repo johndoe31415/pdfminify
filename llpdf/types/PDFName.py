@@ -20,22 +20,38 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import re
+import string
 from .Comparable import Comparable
 
 class PDFName(Comparable):
+	_HEX_CHAR = re.compile("#([a-fA-F0-9]{2})")
+	_PRINTABLE = set(string.ascii_letters + string.digits)
+
 	def __init__(self, name):
 		assert(name.startswith("/"))
-		self._name = name
+		self._name = self._HEX_CHAR.sub(lambda match: chr(int(match.group(1), 16)), name)
 
 	def cmpkey(self):
 		return ("PDFName", self._name)
 
+	@staticmethod
+	def _escape(char):
+		return "#%02x" % (ord(char))
+
 	@property
 	def value(self):
-		return self._name
+		return "/" + "".join(char if (char in self._PRINTABLE) else self._escape(char) for char in self._name[1:])
 
 	def __repr__(self):
 		return str(self)
 
 	def __str__(self):
 		return "Name<%s>" % (self.value)
+
+if __name__ == "__main__":
+	x = PDFName("/Adobe#20Green")
+	print(x, x.value)
+
+	x = PDFName("/Adobe#ff#20#41#41#20Green")
+	print(x, x.value)
