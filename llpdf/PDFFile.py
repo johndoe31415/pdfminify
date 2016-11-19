@@ -28,6 +28,7 @@ import logging
 from .img.PDFImage import PDFImage
 from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
+from .types.XRefTable import XRefTable
 from llpdf.repr import PDFParser, GraphicsParser
 from .FileRepr import StreamRepr
 
@@ -43,23 +44,26 @@ class PDFFile(object):
 			self._log.warning("Warning: Header indicates %s, unknown if we can handle this.", self._hdr_version.decode())
 
 		self._objs = { }
+		self._xref_table = XRefTable()
 		self._trailer = None
-		self._xref_obj = None
 		self._read_objects()
 		self._read_endfile()
 		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
 		self._unpack_objstrms()
 		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
 
+	@property
+	def xref_table(self):
+		return self._xref_table
+
 	def _identify(self):
 		self._f.seek(0)
 		version = self._f.readline()
 
 		pos = self._f.tell()
-
 		after_hdr = self._f.readline()
 		if (after_hdr[0] != ord("%")) or any(value & 0x80 != 0x80 for value in after_hdr[ 1 : 5 ]):
-			self._log.warn("PDF seems to violate standard, bytes read after initial line are %s.", after_hdr)
+			self._log.warn("PDF seems to violate standard, bytes read in second line are %s.", after_hdr)
 			self._f.seek(pos)
 		return version.rstrip(b"\r\n ")
 
@@ -166,32 +170,6 @@ class PDFFile(object):
 		line = self._f.readline_nonempty().decode("ascii").rstrip("\r\n")
 		return line
 
-	def _read_next_xref_batch(self):
-		pos = self._f.tell()
-		entries_hdr = self._f.readline()
-		try:
-			entries_hdr = entries_hdr.decode("ascii").rstrip("\r\n").split()
-		except UnicodeDecodeError:
-			# XRef Table is at end or we cannot parse this.
-			self._f.seek(pos)
-			return False
-
-		if len(entries_hdr) != 2:
-			# XRef Table is at end or we cannot parse this.
-			self._f.seek(pos)
-			return False
-
-		(start_id, entry_cnt) = (int(entries_hdr[0]), int(entries_hdr[1]))
-		for i in range(entry_cnt):
-			self._f.readline()
-		return True
-
-	def _read_xref_table(self):
-		self._log.debug("Started reading XRef table.")
-		while True:
-			if not self._read_next_xref_batch():
-				return False
-
 	def _read_trailer(self):
 		self._log.debug("Started reading trailer.")
 		(trailer_data, delimiter) = self._f.read_until([ b"startxref\r\n", b"startxref\n" ])
@@ -203,17 +181,21 @@ class PDFFile(object):
 		while True:
 			line = self._read_textline()
 			if line == "xref":
-				self._read_xref_table()
+				self._xref_table.read_xref_table_from_file(self._f)
 			elif line == "trailer":
 				self._read_trailer()
 			elif line == "startxref":
 				xref_offset = int(self._f.readline())
 				if self._trailer is None:
+					# Compressed XRef directory
 					pos = self._f.tell()
 					self._f.seek(xref_offset)
 					xref_object = PDFObject.parse(self._f)
 					self._trailer = xref_object.content
-					self._xref_obj = self[(xref_object.objid, xref_object.gennum)]
+					assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
+					assert(self._trailer[PDFName("/Filter")] == PDFName("/FlateDecode"))
+					bin_xref_data = zlib.decompress(xref_object.stream)
+					self._xref_table.parse_xref_object(bin_xref_data, self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
 					self._f.seek(pos)
 			elif line == "%%EOF":
 				break
