@@ -83,9 +83,6 @@ class PDFObject(Comparable):
 		}
 		if alpha_xref is not None:
 			content[PDFName("/SMask")] = alpha_xref
-#		if content[PDFName("/Filter")] == PDFName("/DCTDecode"):
-#			content[PDFName("/Width")] = 1
-#			content[PDFName("/Height")] = 1
 		return cls.create(objid, gennum, content, img.imgdata)
 
 	@property
@@ -131,19 +128,23 @@ class PDFObject(Comparable):
 		return self._stream
 
 	@property
+	def has_stream(self):
+		return self.stream is not None
+
+	@property
+	def is_objstrm(self):
+		return self.has_stream and isinstance(self.content, dict) and (self.content.get(PDFName("/Type")) == PDFName("/ObjStm"))
+
+	@property
 	def is_image(self):
-		return (self.stream is not None) and (self.content.get(PDFName("/Type")) == PDFName("/XObject")) and (self.content.get(PDFName("/Subtype")) == PDFName("/Image"))
+		return self.has_stream and (self.content.get(PDFName("/Type")) == PDFName("/XObject")) and (self.content.get(PDFName("/Subtype")) == PDFName("/Image"))
 
 	@property
 	def is_pattern(self):
 		return isinstance(self.content, dict) and (self.content.get(PDFName("/PatternType")) == 1) and (self.content.get(PDFName("/PaintType")) == 1)
 
-	@property
-	def is_objstrm(self):
-		return (self.stream is not None) and isinstance(self.content, dict) and (self.content.get(PDFName("/Type")) == PDFName("/ObjStm"))
-
 	def __len__(self):
-		return 0 if self.stream is None else len(self.stream)
+		return 0 if (not self.has_stream) else len(self.stream)
 
 	def __str__(self):
 		return "PDFObject<ID=%d, gen=%d, %d bytes>" % (self.objid, self.gennum, len(self))
