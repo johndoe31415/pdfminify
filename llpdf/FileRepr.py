@@ -20,6 +20,19 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+class _TempSeekObject(object):
+	def __init__(self, f):
+		self._f = f
+		self._offset = self._f.tell()
+		self._entered = 0
+
+	def __enter__(self):
+		self._entered += 1
+		assert(self._entered == 1)
+
+	def __exit__(self, *args):
+		self._f.seek(self._offset)
+
 class StreamRepr(object):
 	def __init__(self, buf):
 		self._buf = buf
@@ -34,6 +47,11 @@ class StreamRepr(object):
 		elif offset > len(self._buf):
 			self._offset = len(self._buf)
 		self._offset = offset
+
+	def tempseek(self, offset):
+		tempseek_obj = _TempSeekObject(self)
+		self.seek(offset)
+		return tempseek_obj
 
 	def read(self, length):
 		data = self._buf[self._offset : self._offset + length]

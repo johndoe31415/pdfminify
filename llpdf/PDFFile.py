@@ -188,15 +188,13 @@ class PDFFile(object):
 				xref_offset = int(self._f.readline())
 				if self._trailer is None:
 					# Compressed XRef directory
-					pos = self._f.tell()
-					self._f.seek(xref_offset)
-					xref_object = PDFObject.parse(self._f)
-					self._trailer = xref_object.content
-					assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
-					assert(self._trailer[PDFName("/Filter")] == PDFName("/FlateDecode"))
-					bin_xref_data = zlib.decompress(xref_object.stream)
-					self._xref_table.parse_xref_object(bin_xref_data, self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
-					self._f.seek(pos)
+					with self._f.tempseek(xref_offset):
+						xref_object = PDFObject.parse(self._f)
+						self._trailer = xref_object.content
+						assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
+						assert(self._trailer[PDFName("/Filter")] == PDFName("/FlateDecode"))
+						bin_xref_data = zlib.decompress(xref_object.stream)
+						self._xref_table.parse_xref_object(bin_xref_data, self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
 			elif line == "%%EOF":
 				break
 			else:
