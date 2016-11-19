@@ -22,63 +22,55 @@
 
 from llpdf.repr.PDFSerializer import PDFSerializer
 from llpdf.types.PDFXRef import PDFXRef
+from llpdf.types.CompressedObjectContainer import CompressedObjectContainer
+from llpdf.types.XRefTable import XRefTable, UncompressedXRefEntry, CompressedXRefEntry
+from llpdf.FileRepr import FileWriterDecorator
 
 class PDFWriter(object):
-	def __init__(self, pdf, f, pretty = False):
+	def __init__(self, pdf, f, pretty = False, use_object_streams = False, use_xref_stream = False):
 		self._pdf = pdf
-		self._f = f
+		self._f = FileWriterDecorator.wrap(f)
 		self._pretty = pretty
-		self._xref = { }
-		self._max_objid = 0
-
-	def _writeline(self, text):
-		self._f.write((text + "\n").encode("utf-8"))
+		self._use_object_streams = use_object_streams
+		self._use_xref_stream = use_xref_stream
+		self._xref = XRefTable()
 
 	def _write_header(self):
-		self._writeline("%PDF-1.5")
+		self._f.writeline("%PDF-1.5")
 		self._f.write(b"%\xb5\xed\xae\xfb\n")
+
+	def _write_uncompressed_object(self, obj, pretty = False):
+		offset = self._f.tell()
+		self._f.writeline("%d %d obj" % (obj.objid, obj.gennum))
+		serializer = PDFSerializer(pretty = self._pretty)
+		self._f.writeline(serializer.serialize(obj.content))
+		if obj.stream is not None:
+			self._f.writeline("stream")
+			self._f.write(obj.stream)
+			self._f.write(b"\n")
+			self._f.writeline("endstream")
+		self._f.writeline("endobj")
+		self._xref.add_entry(UncompressedXRefEntry(objid = obj.objid, gennum = obj.gennum, offset = offset))
 
 	def _write_objs(self, pretty = False):
 		for obj in sorted(self._pdf):
-			self._xref[obj.xref] = self._f.tell()
-			self._writeline("%d %d obj" % (obj.objid, obj.gennum))
-			serializer = PDFSerializer(pretty = self._pretty)
-			self._writeline(serializer.serialize(obj.content))
-			if obj.stream is not None:
-				self._writeline("stream")
-				self._f.write(obj.stream)
-				self._f.write(b"\n")
-				self._writeline("endstream")
-			self._writeline("endobj")
-		self._max_objid = obj.objid
-
-	def _write_xref_entry(self, offset, gennum, f_or_n):
-		assert(f_or_n in [ "f", "n" ])
-		self._writeline("%010d %05d %s " % (offset, gennum, f_or_n))
+			self._write_uncompressed_object(obj)
 
 	def _write_xrefs(self):
-		self._xref_offset = self._f.tell()
-
-		self._writeline("xref")
-		self._writeline("0 %d" % (1 + self._max_objid))
-		self._write_xref_entry(0, 65535, "f")
-		for objid in range(1, self._max_objid + 1):
-			gennum = 0
-			offset = self._xref.get(PDFXRef(objid, gennum))
-			if offset is None:
-				self._write_xref_entry(0, 0, "f")
-			else:
-				self._write_xref_entry(offset, gennum, "n")
+		if not self._use_xref_stream:
+			self._xref.write_xref_table(self._f)
+		else:
+			raise Exception(NotImplemented)
 
 	def _write_trailer(self):
-		self._writeline("trailer")
+		self._f.writeline("trailer")
 		serializer = PDFSerializer(pretty = self._pretty)
-		self._writeline(serializer.serialize(self._pdf.trailer))
+		self._f.writeline(serializer.serialize(self._pdf.trailer))
 
 	def _write_finish(self):
-		self._writeline("startxref")
-		self._writeline(str(self._xref_offset))
-		self._writeline("%%EOF")
+		self._f.writeline("startxref")
+		self._f.writeline(str(self._xref.xref_offset))
+		self._f.writeline("%%EOF")
 
 	def write(self):
 		self._write_header()

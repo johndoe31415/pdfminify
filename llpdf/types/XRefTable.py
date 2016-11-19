@@ -75,6 +75,12 @@ class XRefTable(object):
 
 	def __init__(self):
 		self._content = { }
+		self._max_objid = 0
+		self._xref_offset = None
+
+	@property
+	def xref_offset(self):
+		return self._xref_offset
 
 	def _read_next_xref_batch(self, f):
 		pos = f.tell()
@@ -152,10 +158,29 @@ class XRefTable(object):
 
 	def add_entry(self, entry):
 		self._content[(entry.objid, entry.gennum)] = entry
+		self._max_objid = max(self._max_objid, entry.objid)
 
 	@staticmethod
 	def _to_int(data):
 		return sum(value << (byteno * 8) for (byteno, value) in enumerate(reversed(data)))
+
+	def _write_xref_entry(self, f, offset, gennum, f_or_n):
+		assert(f_or_n in [ "f", "n" ])
+		f.writeline("%010d %05d %s " % (offset, gennum, f_or_n))
+
+	def write_xref_table(self, f):
+		self._xref_offset = f.tell()
+
+		gennum = 0
+		f.writeline("xref")
+		f.writeline("0 %d" % (1 + self._max_objid))
+		self._write_xref_entry(f, 0, 65535, "f")
+		for objid in range(1, self._max_objid + 1):
+			entry = self._content.get((objid, gennum))
+			if entry is None:
+				self._write_xref_entry(f, 0, 65535, "f")
+			else:
+				self._write_xref_entry(f, entry.offset, entry.gennum, "n")
 
 	def __iter__(self):
 		return iter(self._content.items())

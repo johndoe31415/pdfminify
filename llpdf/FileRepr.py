@@ -20,6 +20,8 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import types
+
 class _TempSeekObject(object):
 	def __init__(self, f):
 		self._f = f
@@ -32,6 +34,16 @@ class _TempSeekObject(object):
 
 	def __exit__(self, *args):
 		self._f.seek(self._offset)
+
+class FileWriterDecorator(object):
+	def writeline(self, text):
+		return self.write((text + "\n").encode("utf-8"))
+
+	@classmethod
+	def wrap(cls, f):
+		f.writeline = types.MethodType(cls.writeline, f)
+		return f
+
 
 class StreamRepr(object):
 	def __init__(self, buf):
