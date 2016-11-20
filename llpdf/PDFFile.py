@@ -28,6 +28,7 @@ import logging
 from .img.PDFImage import PDFImage
 from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
+from .types.PDFXRef import PDFXRef
 from .types.XRefTable import XRefTable
 from llpdf.repr import PDFParser, GraphicsParser
 from .FileRepr import StreamRepr
@@ -51,6 +52,7 @@ class PDFFile(object):
 		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
 		self._unpack_objstrms()
 		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
+		self._fix_object_sizes()
 
 	@property
 	def xref_table(self):
@@ -131,7 +133,6 @@ class PDFFile(object):
 
 		yield from self._get_pages_from_pages_obj(pages_obj)
 
-
 	@property
 	def parsed_pages(self):
 		for page in self.pages:
@@ -166,6 +167,19 @@ class PDFFile(object):
 			self._log.debug("Read object: %s", obj)
 			self._objs[(obj.objid, obj.gennum)] = obj
 
+	def _fix_object_sizes(self):
+		self._log.debug("Fixing object sizes of indirect referenced /Length fields")
+		for obj in self.stream_objects:
+			length_xref = obj.content.get(PDFName("/Length"))
+			if (length_xref is not None) and isinstance(length_xref, PDFXRef):
+				length_obj = self.lookup(length_xref)
+				length = length_obj.content
+				if not isinstance(length, int):
+					self._log.warn("Indirect length reference supposed to point to integer value, but points to %s (%s)", length_obj, length)
+				else:
+					if length != len(obj):
+						obj.truncate(length)
+
 	def _read_textline(self):
 		line = self._f.readline_nonempty().decode("ascii").rstrip("\r\n")
 		return line
@@ -190,6 +204,8 @@ class PDFFile(object):
 					# Compressed XRef directory
 					with self._f.tempseek(xref_offset):
 						xref_object = PDFObject.parse(self._f)
+						if xref_object is None:
+							raise Exception("Tried to parse XRef stream at offset 0x%x, but could not parse a valid type /XRef object there. Corrupt PDF?" % (xref_offset))
 						self._trailer = xref_object.content
 						assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
 						assert(self._trailer[PDFName("/Filter")] == PDFName("/FlateDecode"))

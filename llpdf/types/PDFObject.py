@@ -65,6 +65,9 @@ class PDFObject(Comparable):
 		self.set_content(pdfobj.content)
 		self.set_stream(pdfobj.stream)
 
+	def truncate(self, stream_length):
+		self._stream = self._stream[ : stream_length]
+
 	@classmethod
 	def create(cls, objid, gennum, content, stream):
 		result = cls(objid, gennum, rawdata = None)
