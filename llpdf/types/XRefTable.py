@@ -31,42 +31,10 @@ class XRefTableEntryType(enum.IntEnum):
 	UncompressedObject = 1
 	CompressedObject = 2
 
-class CompressedXRefEntry(object):
-	def __init__(self, objid, inside_objid, index):
-		"""Object 'objid' is compressed inside object (objid = 'inside_objid',
-		gennum = 0) at index 'index'."""
-		self._objid = objid
-		self._inside_objid = inside_objid
-		self._index = index
-
-	@property
-	def compressed(self):
-		return True
-
-	@property
-	def objid(self):
-		return self._objid
-
-	@property
-	def gennum(self):
-		return 0
-
-	@property
-	def inside_objid(self):
-		return self._inside_objid
-
-	@property
-	def index(self):
-		return self._index
-
-	def __str__(self):
-		return "CompXRefEntry <ObjId=%d, GenNum=%d> inside object %d[%d]" % (self.objid, self.gennum, self.inside_objid, self.index)
-
-class UncompressedXRefEntry(object):
-	def __init__(self, objid, gennum, offset):
+class XRefEntry(object):
+	def __init__(self, objid, gennum):
 		self._objid = objid
 		self._gennum = gennum
-		self._offset = offset
 
 	@property
 	def compressed(self):
@@ -79,6 +47,38 @@ class UncompressedXRefEntry(object):
 	@property
 	def gennum(self):
 		return self._gennum
+
+class ReservedXRefEntry(XRefEntry):
+	def __str__(self):
+		return "ReservedRefEntry <ObjId=%d, GenNum=%d>"
+
+class CompressedXRefEntry(XRefEntry):
+	def __init__(self, objid, inside_objid, index):
+		"""Object 'objid' is compressed inside object (objid = 'inside_objid',
+		gennum = 0) at index 'index'."""
+		XRefEntry.__init__(self, objid, 0)
+		self._inside_objid = inside_objid
+		self._index = index
+
+	@property
+	def compressed(self):
+		return True
+
+	@property
+	def inside_objid(self):
+		return self._inside_objid
+
+	@property
+	def index(self):
+		return self._index
+
+	def __str__(self):
+		return "CompXRefEntry <ObjId=%d, GenNum=%d> inside object %d[%d]" % (self.objid, self.gennum, self.inside_objid, self.index)
+
+class UncompressedXRefEntry(XRefEntry):
+	def __init__(self, objid, gennum, offset):
+		XRefEntry.__init__(self, objid, gennum)
+		self._offset = offset
 
 	@property
 	def offset(self):
@@ -219,6 +219,12 @@ class XRefTable(object):
 			if key not in self._content:
 				return objid
 		return self._max_objid + 1
+
+	def reserve_free_objid(self):
+		objid = self.get_free_objid()
+		entry = ReservedXRefEntry(objid, 0)
+		self.add_entry(entry)
+		return objid
 
 	@staticmethod
 	def _append_binary_xref_entry(data, field2_width, field1, field2, field3):

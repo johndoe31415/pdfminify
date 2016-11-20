@@ -20,10 +20,50 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-class CompressedObjectContainer(object):
-	def __init__(self):
-		self._objid = None
-		self._contained_xrefs = [ ]
+import zlib
+from llpdf.types.XRefTable import CompressedXRefEntry
+from llpdf.types.PDFObject import PDFObject
+from llpdf.types.PDFName import PDFName
 
-	def assign_objid(self):
+class CompressedObjectContainer(object):
+	def __init__(self, objid):
 		self._objid = objid
+		self._contained_objects = [ ]
+
+	@property
+	def objid(self):
+		return self._objid
+
+	@property
+	def objects_inside_count(self):
+		return len(self._contained_objects)
+
+	def add(self, obj):
+		self._contained_objects.append(obj)
+		return CompressedXRefEntry(obj.objid, self.objid, len(self._contained_objects) - 1)
+
+	def serialize(self, serializer):
+		header = [ ]
+		data = bytearray()
+		for obj in self._contained_objects:
+			obj_data = serializer.serialize(obj.content).encode("utf-8")
+			offset = len(data)
+			header.append(obj.objid)
+			header.append(offset)
+			data += obj_data + b"\n"
+
+		header = " ".join(str(value) for value in header)
+		header = header.encode("utf-8") + b"\n"
+		full_data = header + data
+		compressed_data = zlib.compress(full_data)
+		content = {
+			PDFName("/Type"):	PDFName("/ObjStm"),
+			PDFName("/N"):		self.objects_inside_count,
+			PDFName("/First"):	len(header),
+			PDFName("/Filter"):	PDFName("/FlateDecode"),
+			PDFName("/Length"):	len(compressed_data),
+		}
+		return PDFObject.create(objid = self.objid, gennum = 0, content = content, stream = compressed_data)
+
+	def __str__(self):
+		return "CompressedContainer<ObjId = %d, %d objects inside: {%s}>" % (self.objid, self.objects_inside_count, ", ".join(str(obj.objid) for obj in self._contained_objects))

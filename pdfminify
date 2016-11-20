@@ -46,7 +46,8 @@ parser.add_argument("--pretty-pdf", action = "store_true", help = "Write pretty 
 parser.add_argument("--remove-alpha", action = "store_true", help = "Completely remove the alpha channel (transparency) of all images. The color which transparent areas should be replaced by can be specified using the --background-color command line option.")
 parser.add_argument("--background-color", metavar = "color", type = str, default = "white", help = "When removing alpha channels, specifies the color that should be used as background. Defaults to %(default)s.")
 parser.add_argument("--dump-xref-table", action = "store_true", help = "Dump out the XRef table that was read from the input PDF file. Mainly useful for debugging.")
-parser.add_argument("--no-xref-stream", action = "store_true", help = "Do not write the XRef table as a XRef stream, but instead write a classical PDF trailer. This will increase the file size a bit, but might improve compatibility with old PDF readers (XRef streams are supported only starting with PDF 1.5).")
+parser.add_argument("--no-xref-stream", action = "store_true", help = "Do not write the XRef table as a XRef stream, but instead write a classical PDF trailer. This will increase the file size a bit, but might improve compatibility with old PDF readers (XRef streams are supported only starting with PDF 1.5). XRef-streams are a prerequisite to object stream compression, so if XRef-streams are disabled, so will also be object streams (e.g, --no-object-streams is implied).")
+parser.add_argument("--no-object-streams", action = "store_true", help = "Do not compress objects into object-streams.")
 parser.add_argument("--no-optimization", action = "store_true", help = "Do not perform any optimization or filters on the source PDF whatsoever, just read it in and write it back out.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Show verbose messages during conversation. Can be specified multiple times to increase log level.")
 parser.add_argument("infile", metavar = "pdf_in", type = str, help = "Input PDF file.")
@@ -82,7 +83,7 @@ with open(args.infile, "rb") as infile, open(args.outfile, "wb") as outfile:
 			if args.verbose:
 				log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
 
-	writer = llpdf.PDFWriter(pdf, outfile, pretty = args.pretty_pdf, use_xref_stream = not args.no_xref_stream)
+	writer = llpdf.PDFWriter(pdf, outfile, pretty = args.pretty_pdf, use_xref_stream = not args.no_xref_stream, use_object_streams = not args.no_object_streams)
 	writer.write()
 new_size = os.stat(args.outfile).st_size
 if args.verbose:
