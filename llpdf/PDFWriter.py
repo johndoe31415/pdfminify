@@ -27,7 +27,7 @@ from llpdf.types.XRefTable import XRefTable, UncompressedXRefEntry, CompressedXR
 from llpdf.FileRepr import FileWriterDecorator
 
 class PDFWriter(object):
-	def __init__(self, pdf, f, pretty = False, use_object_streams = False, use_xref_stream = False):
+	def __init__(self, pdf, f, pretty = False, use_object_streams = False, use_xref_stream = True):
 		self._pdf = pdf
 		self._f = FileWriterDecorator.wrap(f)
 		self._pretty = pretty
@@ -59,8 +59,11 @@ class PDFWriter(object):
 	def _write_xrefs(self):
 		if not self._use_xref_stream:
 			self._xref.write_xref_table(self._f)
+			self._write_trailer()
 		else:
-			raise Exception(NotImplemented)
+			xref_object = self._xref.serialize_xref_object(self._pdf.trailer, self._xref.get_free_objid())
+			self._xref.xref_offset = self._f.tell()
+			self._write_uncompressed_object(xref_object, pretty = self._pretty)
 
 	def _write_trailer(self):
 		self._f.writeline("trailer")
@@ -76,7 +79,6 @@ class PDFWriter(object):
 		self._write_header()
 		self._write_objs()
 		self._write_xrefs()
-		self._write_trailer()
 		self._write_finish()
 
 

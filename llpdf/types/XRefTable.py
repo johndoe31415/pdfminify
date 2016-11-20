@@ -20,7 +20,16 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import zlib
+import enum
 import logging
+from llpdf.types.PDFName import PDFName
+from llpdf.types.PDFObject import PDFObject
+
+class XRefTableEntryType(enum.IntEnum):
+	FreeObject = 0
+	UncompressedObject = 1
+	CompressedObject = 2
 
 class CompressedXRefEntry(object):
 	def __init__(self, objid, inside_objid, index):
@@ -29,6 +38,10 @@ class CompressedXRefEntry(object):
 		self._objid = objid
 		self._inside_objid = inside_objid
 		self._index = index
+
+	@property
+	def compressed(self):
+		return True
 
 	@property
 	def objid(self):
@@ -56,6 +69,10 @@ class UncompressedXRefEntry(object):
 		self._offset = offset
 
 	@property
+	def compressed(self):
+		return False
+
+	@property
 	def objid(self):
 		return self._objid
 
@@ -81,6 +98,10 @@ class XRefTable(object):
 	@property
 	def xref_offset(self):
 		return self._xref_offset
+
+	@xref_offset.setter
+	def xref_offset(self, offset):
+		self._xref_offset = offset
 
 	def _read_next_xref_batch(self, f):
 		pos = f.tell()
@@ -128,32 +149,33 @@ class XRefTable(object):
 		assert(len(field_lengths) == 3)
 		entry_width = sum(field_lengths)
 		assert((len(rawdata) % entry_width) == 0)
+		self._log.trace("XRefStrm length is %d bytes, i.e. %d full entries (%d bytes per entry). Index is %s.", len(rawdata), len(rawdata) // entry_width, entry_width, index)
 		entries = [ rawdata[i : i + entry_width] for i in range(0, len(rawdata), entry_width) ]
 
 		field_1_offset = 0
 		field_2_offset = field_lengths[0]
 		field_3_offset = field_lengths[0] + field_lengths[1]
 		for (objid, entry) in enumerate(entries, index[0]):
-			type_field = self._to_int(entry[field_1_offset : field_2_offset])
+			type_field = XRefTableEntryType(self._to_int(entry[field_1_offset : field_2_offset]))
 			field_2 = self._to_int(entry[field_2_offset : field_3_offset])
 			field_3 = self._to_int(entry[field_3_offset : ])
-			if type_field == 0:
+			if type_field == XRefTableEntryType.FreeObject:
 				# Linked list of free objects
 				(next_free_objid, next_free_gennum) = (field_2, field_3)
-#				if (next_free_objid == 0) and (next_free_gennum):
-#					# TODO: Is my assumption true?
-#					print("%d: Currently no next free object." % (objid))
-#				else:
-#					print("%d: Next free object: ObjId=%d, GenNum=%d" % (objid, next_free_objid, next_free_gennum))
-			elif type_field == 1:
+				if (next_free_objid == 0) and (next_free_gennum):
+					# TODO: Is my assumption true?
+					self._log.trace("XRefStrm ObjId %d: Currently no next free object." % (objid))
+				else:
+					self._log.trace("XRefStrm ObjId %d: Next free object: ObjId=%d, GenNum=%d" % (objid, next_free_objid, next_free_gennum))
+			elif type_field == XRefTableEntryType.UncompressedObject:
 				# Uncompressed object
 				(byte_offset, gennum) = (field_2, field_3)
-#				print("%d: Uncompressed object at %d, gennum %d" % (objid, byte_offset, gennum))
+				self._log.trace("XRefStrm ObjId %d: Uncompressed object at %d, gennum %d" % (objid, byte_offset, gennum))
 				self.add_entry(UncompressedXRefEntry(objid = objid, gennum = gennum, offset = byte_offset))
-			elif type_field == 2:
+			elif type_field == XRefTableEntryType.CompressedObject:
 				# Compressed object
 				(objstrm_objid, index) = (field_2, field_3)
-#				print("%d: Compressed object inside ObjStm objid = %d, index %d" % (objid, objstrm_objid, index))
+				self._log.trace("XRefStrm ObjId %d: Compressed object inside ObjStm objid = %d, index %d" % (objid, objstrm_objid, index))
 				self.add_entry(CompressedXRefEntry(objid = objid, inside_objid = objstrm_objid, index = index))
 
 	def add_entry(self, entry):
@@ -181,6 +203,57 @@ class XRefTable(object):
 				self._write_xref_entry(f, 0, 65535, "f")
 			else:
 				self._write_xref_entry(f, entry.offset, entry.gennum, "n")
+
+	def _get_offset_width(self):
+		max_offset = 0
+		for entry in self._content.values():
+			if not entry.compressed:
+				max_offset = max(max_offset, entry.offset)
+		offset_width = (max_offset.bit_length() + 7) // 8
+		offset_width = max(offset_width, 1)
+		return offset_width
+
+	def get_free_objid(self):
+		for objid in range(1, self._max_objid + 1):
+			key = (objid, 0)
+			if key not in self._content:
+				return objid
+		return self._max_objid + 1
+
+	@staticmethod
+	def _append_binary_xref_entry(data, field2_width, field1, field2, field3):
+		data.append(field1)
+		data += field2.to_bytes(length = field2_width, byteorder = "big")
+		data.append(field3)
+
+	def _serialize_xref_data(self, offset_width):
+		gennum = 0
+		result = bytearray()
+		self._append_binary_xref_entry(result, offset_width, XRefTableEntryType.FreeObject, 0, 255)
+		for objid in range(1, self._max_objid + 1):
+			entry = self._content.get((objid, gennum))
+			if entry is None:
+				self._append_binary_xref_entry(result, offset_width, XRefTableEntryType.FreeObject, 0, 255)
+			elif not entry.compressed:
+				self._append_binary_xref_entry(result, offset_width, XRefTableEntryType.UncompressedObject, entry.offset, entry.gennum)
+			else:
+				self._append_binary_xref_entry(result, offset_width, XRefTableEntryType.CompressedObject, entry.inside_objid, entry.index)
+		return result
+
+	def serialize_xref_object(self, trailer_dict, objid):
+		offset_width = self._get_offset_width()
+		content = dict(trailer_dict)
+		content.update({
+			PDFName("/Type"):	PDFName("/XRef"),
+			PDFName("/Index"):	[ 0, self._max_objid + 1 ],
+			PDFName("/Size"):	self._max_objid + 1,
+			PDFName("/W"):		[ 1, offset_width, 1 ],
+			PDFName("/Filter"):	PDFName("/FlateDecode"),
+		})
+		data = self._serialize_xref_data(offset_width)
+		stream = zlib.compress(data)
+		content[PDFName("/Length")] = len(stream)
+		return PDFObject.create(objid = objid, gennum = 0, content = content, stream = stream)
 
 	def __iter__(self):
 		return iter(self._content.items())
