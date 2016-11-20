@@ -47,6 +47,10 @@ class PDFObject(Comparable):
 				self._stream = None
 			content = content.decode("utf-8")
 			self._content = PDFParser.parse(content)
+			if (self._stream is not None) and (PDFName("/Length") in self._content) and isinstance(self._content[PDFName("/Length")], int):
+				# When direct length field is given, then truncate the stream
+				# according to it. For indirect streams, we don't do this (yet)
+				self._stream = self._stream[ : self._content[PDFName("/Length")]]
 		else:
 			self._stream = None
 			self._content = None
