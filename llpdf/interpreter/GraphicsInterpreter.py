@@ -118,8 +118,8 @@ class GraphicsInterpreter(object):
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 
-				(width, height) = (image_obj.content[PDFName("/Width")], image_obj.content[PDFName("/Height")])
-				native_extents = self._gs["CTM"].extents([ 0, 0, width, height ])
+#				(width, height) = (image_obj.content[PDFName("/Width")], image_obj.content[PDFName("/Height")])
+				native_extents = self._gs["CTM"].extents([ 0, 0, 1, 1 ])
 				self._log.debug("Draw object of %s found with CTM %s; %s", image_obj, self._gs["CTM"], native_extents.format())
 
 				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, native_extents = native_extents))

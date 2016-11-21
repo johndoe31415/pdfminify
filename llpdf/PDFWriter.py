@@ -44,7 +44,10 @@ class PDFWriter(object):
 		self._xref = XRefTable()
 
 	def _write_header(self):
-		self._f.writeline("%PDF-1.5")
+		if (not self._use_object_streams) and (not self._use_xref_stream):
+			self._f.writeline("%PDF-1.4")
+		else:
+			self._f.writeline("%PDF-1.5")
 		self._f.write(b"%\xb5\xed\xae\xfb\n")
 
 	def _write_uncompressed_object(self, obj):

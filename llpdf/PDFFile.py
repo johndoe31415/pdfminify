@@ -54,6 +54,11 @@ class PDFFile(object):
 		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
 		self._fix_object_sizes()
 
+	def crappy_workaround_get_free_objid(self):
+		for objid in range(1, len(self._objs) + 1):
+			if (objid, 0) not in self._objs:
+				return objid
+
 	@property
 	def xref_table(self):
 		return self._xref_table

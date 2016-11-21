@@ -27,3 +27,4 @@ from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
 from .ExplicitLengthFilter import ExplicitLengthFilter
 from .FlattenImageOptimization import FlattenImageOptimization
 from .RemoveMetadataFilter import RemoveMetadataFilter
+from .PDFAFilter import PDFAFilter
