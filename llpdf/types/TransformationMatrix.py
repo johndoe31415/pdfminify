@@ -43,8 +43,44 @@
 #                                                                 [e a_ + f c_ + e_    e b_ + f d_ + f_    1]
 
 import collections
+from llpdf.Measurements import Measurements
 
-ImageExtents = collections.namedtuple("ImageExtents", [ "x", "y", "width", "height" ])
+class NativeImageExtents(object):
+	def __init__(self, x, y, width, height):
+		self._x = x
+		self._y = y
+		self._width = width
+		self._height = height
+
+	@property
+	def x(self):
+		return self._x
+
+	@property
+	def y(self):
+		return self._y
+
+	@property
+	def width(self):
+		return self._width
+
+	@property
+	def height(self):
+		return self._height
+
+	def dpi(self, dots_width, dots_height):
+		"""Calculates the resolution (in dpi, dots per inch) for a given pixel
+		resolution."""
+		dpi_x = dots_width / Measurements.convert(self.width, "native", "inch")
+		dpi_y = dots_height / Measurements.convert(self.height, "native", "inch")
+		return min(dpi_x, dpi_y)
+
+	def format(self):
+		return "at %s, %s extent %s x %s" % (Measurements.format(self.x, "native", suffix = False), Measurements.format(self.y, "native"), Measurements.format(self.width, "native", suffix = False), Measurements.format(self.height, "native"))
+
+	def __str__(self):
+		return "x, y, w, h = %.0f, %.0f, %.0f, %.0f" % (self.x, self.y, self.width, self.height)
+
 
 class TransformationMatrix(object):
 	def __init__(self, a, b, c, d, e, f):
@@ -89,12 +125,12 @@ class TransformationMatrix(object):
 			self.b * x + self.d * y + self.f,
 		)
 
-	def extents(self, width = 1, height = 1, scale = 1):
+	def extents(self, width = 1, height = 1):
 		(x0, y0) = self.apply(0, 0)
 		(x1, y1) = self.apply(width, height)
 		(width, height) = (abs(x1 - x0), abs(y1 - y0))
 		(xoffset, yoffset) = (min(x0, x1), min(y0, y1))
-		return ImageExtents(x = scale * xoffset, y = scale * yoffset, width = scale * width, height = scale * height)
+		return NativeImageExtents(x = xoffset, y = yoffset, width = width, height = height)
 
 	def __imul__(self, other):
 		return TransformationMatrix(
@@ -118,4 +154,4 @@ class TransformationMatrix(object):
 		return str(self)
 
 	def __str__(self):
-		return "Matrix<%f %f %f %f %f %f>" % (self.a, self.b, self.c, self.d, self.e, self.f)
+		return "Matrix<%.3f %.3f %.3f %.3f %.3f %.3f>" % (self.a, self.b, self.c, self.d, self.e, self.f)

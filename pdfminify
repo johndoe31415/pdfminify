@@ -72,6 +72,7 @@ parser.add_argument("outfile", metavar = "pdf_out", type = str, help = "Output P
 args = parser.parse_args(sys.argv[1:])
 
 llpdf.configure_logging(args.verbose)
+llpdf.Measurements.set_default_unit(args.unit)
 
 pdf_filter_classes = [
 	llpdf.filters.RemoveDuplicateImageOptimization,

@@ -33,18 +33,12 @@ from llpdf.interpreter.GraphicsInterpreter import GraphicsInterpreter
 class DownscaleImageOptimization(PDFFilter):
 	def _draw_callback(self, draw_cmd):
 		if draw_cmd.image_obj.content.get(PDFName("/Subtype")) != PDFName("/Image"):
-			# This might be a form that is plotted with the Do command or
+			# This might be a /Form that is plotted with the Do command or
 			# similar. Ignore it.
 			return
 
 		image_xref = draw_cmd.image_obj.xref
-		self._log.debug("Interpreter found %s image %s at %.1f, %.1f mm with extents %.1f x %.1f mm", draw_cmd.drawtype, image_xref, draw_cmd.extents.x, draw_cmd.extents.y, draw_cmd.extents.width, draw_cmd.extents.height)
-		(w, h) = (abs(draw_cmd.extents.width), abs(draw_cmd.extents.height))
-		if image_xref in self._max_image_extents:
-			(current_w, current_h) = self._max_image_extents[image_xref]
-			w = max(w, current_w)
-			h = max(h, current_h)
-		self._max_image_extents[image_xref] = (w, h)
+		self._log.debug("Interpreter found %s image %s at %s", draw_cmd.drawtype, image_xref, draw_cmd.native_extents.format())
 		self._draw_cmds[image_xref].append(draw_cmd)
 
 	def _save_image(self, image, image_xref, text):
@@ -66,15 +60,6 @@ class DownscaleImageOptimization(PDFFilter):
 		resampled_image = reformatter.reformat(image)
 		return resampled_image
 
-	@staticmethod
-	def _calculate_dpi(image, maxw_mm, maxh_mm):
-		maxw_inches = maxw_mm / 25.4
-		maxh_inches = maxh_mm / 25.4
-		current_dpi_w = image.width / maxw_inches
-		current_dpi_h = image.height / maxh_inches
-		current_dpi = min(current_dpi_w, current_dpi_h)
-		return current_dpi
-
 	def _replace_image(self, img_xref, resampled_image):
 		image_meta = self._pdf.lookup(img_xref).content
 		alpha_xref = image_meta.get(PDFName("/SMask"))
@@ -86,7 +71,6 @@ class DownscaleImageOptimization(PDFFilter):
 			self._pdf.replace_object(new_alpha_obj)
 
 	def run(self):
-		self._max_image_extents = { }
 		self._draw_cmds = collections.defaultdict(list)
 
 		# Run through pages first to determine image extents
@@ -95,17 +79,17 @@ class DownscaleImageOptimization(PDFFilter):
 			interpreter.set_draw_callback(self._draw_callback)
 			interpreter.run(page_content)
 
-		for (img_xref, (maxw_mm, maxh_mm)) in self._max_image_extents.items():
+		for (img_xref, img_draw_cmds) in self._draw_cmds.items():
 			try:
 				image = self._pdf.get_image(img_xref)
 			except UnsupportedImageException as e:
-				self._log.error("Ingoring unsupported image %s: %s" % (img_xref, e))
+				self._log.error("Ignoring unsupported image %s: %s" % (img_xref, e))
 				continue
 			self._save_image(image, img_xref, "original")
 
-			current_dpi = self._calculate_dpi(image, maxw_mm, maxh_mm)
+			current_dpi = min(draw_cmd.native_extents.dpi(image.width, image.height) for draw_cmd in img_draw_cmds)
 			scale_factor = min(self._args.target_dpi / current_dpi, 1)
-			self._log.debug("Estimated image %s to have maximum dimensions of %.1f x %.1f mm (%d dpi), scale = %.3f", img_xref, maxw_mm, maxh_mm, current_dpi, scale_factor)
+			self._log.debug("Estimated image %s to have minimum resulution of %d dpi: scale factor = %.3f", img_xref, current_dpi, scale_factor)
 
 			resampled_image = self._rescale_image(image, scale_factor)
 			self._save_image(resampled_image, img_xref, "resampled")
@@ -113,4 +97,5 @@ class DownscaleImageOptimization(PDFFilter):
 
 			self._optimized(image.total_size, resampled_image.total_size)
 			self._replace_image(img_xref, resampled_image)
+
 

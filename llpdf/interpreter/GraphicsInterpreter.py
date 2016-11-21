@@ -25,11 +25,12 @@ import collections
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.TransformationMatrix import TransformationMatrix
+from llpdf.Measurements import Measurements
 
 class GraphicsInterpreter(object):
 	_log = logging.getLogger("llpdf.interpreter.GraphicsInterpreter")
-	_DirectDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "image_obj", "extents" ])
-	_PatternDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "pattern_obj", "image_obj", "extents" ])
+	_DirectDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "image_obj", "native_extents" ])
+	_PatternDrawCallbackResult = collections.namedtuple("DirectDrawCallbackResult", [ "drawtype", "pattern_obj", "image_obj", "native_extents" ])
 
 	def __init__(self, pdf_lookup = None, page_obj = None):
 		self._pdf_lookup = pdf_lookup
@@ -74,10 +75,10 @@ class GraphicsInterpreter(object):
 		width_px = image_resource.content[PDFName("/Width")]
 		height_px = image_resource.content[PDFName("/Height")]
 
-		extents = pattern_matrix.extents(width = width_px, height = height_px, scale = (1 / 72) * 25.4)
+		native_extents = pattern_matrix.extents(width = width_px, height = height_px)
 
-		self._log.debug("Pattern draw object of %s found with CTM %s and pattern matrix %s; extent at %s", image_resource, self._gs["CTM"], pattern_matrix, extents)
-		self._draw_callback(self._PatternDrawCallbackResult(drawtype = "pattern", pattern_obj = pattern, image_obj = image_resource, extents = extents))
+		self._log.debug("Pattern draw object of %s found with CTM %s and pattern matrix %s; %s", image_resource, self._gs["CTM"], pattern_matrix, native_extents.format())
+		self._draw_callback(self._PatternDrawCallbackResult(drawtype = "pattern", pattern_obj = pattern, image_obj = image_resource, native_extents = native_extents))
 
 	def _run_command(self, cmd):
 		cmdcode = cmd.command
@@ -116,10 +117,10 @@ class GraphicsInterpreter(object):
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 
-				extents = self._gs["CTM"].extents(scale = 1 / 72 * 25.4)
-				self._log.debug("Draw object of %s found with CTM %s; extent at %s", image_obj, self._gs["CTM"], extents)
+				native_extents = self._gs["CTM"].extents()
+				self._log.debug("Draw object of %s found with CTM %s; %s", image_obj, self._gs["CTM"], native_extents.format())
 
-				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, extents = extents))
+				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, native_extents = native_extents))
 #		else:
 #			print("Ignoring unknown command: %s" % (cmd))
 
