@@ -153,5 +153,14 @@ class TransformationMatrix(object):
 	def __repr__(self):
 		return str(self)
 
+	@staticmethod
+	def _float_format(value):
+		value = "%.3f" % (value)
+		if value.endswith(".000"):
+			value = value[:-4]
+		return value
+
 	def __str__(self):
-		return "Matrix<%.3f %.3f %.3f %.3f %.3f %.3f>" % (self.a, self.b, self.c, self.d, self.e, self.f)
+		values = (self.a, self.b, self.c, self.d, self.e, self.f)
+		values = ", ".join(self._float_format(value) for value in values)
+		return "Matrix<%s>" % (values)
