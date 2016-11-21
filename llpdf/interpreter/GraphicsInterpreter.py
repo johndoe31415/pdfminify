@@ -65,6 +65,7 @@ class GraphicsInterpreter(object):
 			return
 
 		pattern = self._pdf_lookup.lookup(pattern_xref)
+		pattern_bbox = pattern.content[PDFName("/BBox")]
 		pattern_matrix = TransformationMatrix(*pattern.content[PDFName("/Matrix")])
 
 		pattern_resource_xrefs = list(pattern.content[PDFName("/Resources")][PDFName("/XObject")].values())
@@ -75,7 +76,7 @@ class GraphicsInterpreter(object):
 		width_px = image_resource.content[PDFName("/Width")]
 		height_px = image_resource.content[PDFName("/Height")]
 
-		native_extents = pattern_matrix.extents(width = width_px, height = height_px)
+		native_extents = pattern_matrix.extents(pattern_bbox)
 
 		self._log.debug("Pattern draw object of %s found with CTM %s and pattern matrix %s; %s", image_resource, self._gs["CTM"], pattern_matrix, native_extents.format())
 		self._draw_callback(self._PatternDrawCallbackResult(drawtype = "pattern", pattern_obj = pattern, image_obj = image_resource, native_extents = native_extents))
@@ -117,7 +118,8 @@ class GraphicsInterpreter(object):
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 
-				native_extents = self._gs["CTM"].extents()
+				(width, height) = (image_obj.content[PDFName("/Width")], image_obj.content[PDFName("/Height")])
+				native_extents = self._gs["CTM"].extents([ 0, 0, width, height ])
 				self._log.debug("Draw object of %s found with CTM %s; %s", image_obj, self._gs["CTM"], native_extents.format())
 
 				self._draw_callback(self._DirectDrawCallbackResult(drawtype = "direct", image_obj = image_obj, native_extents = native_extents))

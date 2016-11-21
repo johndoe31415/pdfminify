@@ -125,9 +125,9 @@ class TransformationMatrix(object):
 			self.b * x + self.d * y + self.f,
 		)
 
-	def extents(self, width = 1, height = 1):
-		(x0, y0) = self.apply(0, 0)
-		(x1, y1) = self.apply(width, height)
+	def extents(self, bounding_box):
+		(x0, y0) = self.apply(bounding_box[0], bounding_box[1])
+		(x1, y1) = self.apply(bounding_box[2], bounding_box[3])
 		(width, height) = (abs(x1 - x0), abs(y1 - y0))
 		(xoffset, yoffset) = (min(x0, x1), min(y0, y1))
 		return NativeImageExtents(x = xoffset, y = yoffset, width = width, height = height)
