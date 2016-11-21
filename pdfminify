@@ -24,31 +24,48 @@
 import sys
 import os
 import logging
+import argparse
 import llpdf
 from FriendlyArgumentParser import FriendlyArgumentParser
 from FilesizeFormatter import FilesizeFormatter
 
 def _cropbox(text):
 	text = text.split(",")
-	assert(len(text) == 4)
+	if len(text) != 4:
+		raise argparse.ArgumentTypeError("expected four comma-separated values, but %d given." % (len(text)))
 	return [ float(value) for value in text ]
+
+def _intrange(minvalue, maxvalue):
+	def convert(text):
+		value = int(text)
+		if (minvalue is not None) and (value < minvalue):
+			raise argparse.ArgumentTypeError("value must be at least %d." % (minvalue))
+		if (maxvalue is not None) and (value > maxvalue):
+			raise argparse.ArgumentTypeError("value may be at most %d." % (maxvalue))
+		return value
+	return convert
 
 parser = FriendlyArgumentParser()
 parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
-parser.add_argument("--jpeg-images", action = "store_true", help = "Convert images to JPEGs.")
-parser.add_argument("--jpeg-quality", metavar = "percent", type = int, default = 85, help = "When converting images to JPEG, gives the compression quality from 0-100 (higher is better, but also larger).")
-parser.add_argument("--one-bit-alpha", action = "store_true", help = "Force all alpha channels in images to use one-bit depth. This will make transparent images have rougher edges, but may save additional space.")
-parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Additionally add a /CropBox to all pages of the PDF file. Must be given in the format x,y,w,h.")
-parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit that is used for command line processing. Can be any of %(choices)s, defaults to %(default)s.")
-parser.add_argument("--saveimgdir", metavar = "path", type = str, help = "When specified, save all handled images as individual files into the specified directory. Useful for debugging purposes and image extraction.")
-parser.add_argument("--raw-output", action = "store_true", help = "When saving images externally, save them in exactly the format in which they're also present inside the PDF. Note that this gives raw image files in some cases which do not have any header (but just contain of data).")
-parser.add_argument("--pretty-pdf", action = "store_true", help = "Write pretty PDF files, i.e., format all dictionaries so they're well-readable. Increases required file size a tiny bit, increases generation time of the PDF a little, but produces easily debuggable PDFs.")
-parser.add_argument("--remove-alpha", action = "store_true", help = "Completely remove the alpha channel (transparency) of all images. The color which transparent areas should be replaced by can be specified using the --background-color command line option.")
-parser.add_argument("--background-color", metavar = "color", type = str, default = "white", help = "When removing alpha channels, specifies the color that should be used as background. Defaults to %(default)s.")
+parser.add_argument("--jpeg-images", action = "store_true", help = "Convert images to JPEG format. This means that lossy compression is used that however often yields a much higher compression ratio.")
+parser.add_argument("--jpeg-quality", metavar = "percent", type = _intrange(0, 100), default = 85, help = "When converting images to JPEG format, the parameter gives the compression quality. It is an integer from 0-100 (higher is better, but creates also larger output files).")
+
+parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Crop pages by additionally adding a /CropBox to all pages of the PDF file. Pages will be cropped at offset (x, y) to a width (w, h). Must be given in the format x,y,w,h. The unit in which offset, width and height are given can be specified using the --unit parameter.")
+parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit of measurement that is used for input and output. Can be any of %(choices)s, defaults to %(default)s. One native PDF unit equals 1/72th of an inch.")
+
+parser.add_argument("--one-bit-alpha", action = "store_true", help = "Force all alpha channels in images to use a color depth of one bit. This will make transparent images have rougher edges, but saves additional space.")
+parser.add_argument("--remove-alpha", action = "store_true", help = "Entirely remove the alpha channel (i.e., transparency) of all images. The color which with transparent areas are replaced with can be specified using the --background-color command line option.")
+parser.add_argument("--background-color", metavar = "color", type = str, default = "white", help = "When removing alpha channels, specifies the color that should be used as background. Defaults to %(default)s. Hexadecimal values can be specified as well in the format '#rrggbb'.")
+
+parser.add_argument("--saveimgdir", metavar = "path", type = str, help = "When specified, save all handled images as individual files into the specified directory. Useful for image extraction from a PDF as well as debugging.")
+parser.add_argument("--raw-output", action = "store_true", help = "When saving images externally, save them in exactly the format in which they're also present inside the PDF. Note that this will produce raw image files in some cases which won't have any header (but just contain pixel data). Less useful for image extraction, but can make sense for debugging.")
+parser.add_argument("--pretty-pdf", action = "store_true", help = "Write pretty PDF files, i.e., format all dictionaries so they're well-readable regarding indentation. Increases required file size a tiny bit and increases generation time of the PDF a little, but produces easily debuggable PDFs.")
+
+parser.add_argument("--no-xref-stream", action = "store_true", help = "Do not write the XRef table as a XRef stream, but instead write a classical PDF XRef table and trailer. This will increase the file size a bit, but might improve compatibility with old PDF readers (XRef streams are supported only starting with PDF 1.5). XRef-streams are a prerequisite to object stream compression, so if XRef-streams are disabled, so will also be object streams (e.g, --no-object-streams is implied).")
+parser.add_argument("--no-object-streams", action = "store_true", help = "Do not compress objects into object-streams. Object stream compression is introduced with PDF 1.5 and means that multiple simple objects (without any stream data) are concatenated together and compressed together into one large stream object.")
+
 parser.add_argument("--dump-xref-table", action = "store_true", help = "Dump out the XRef table that was read from the input PDF file. Mainly useful for debugging.")
-parser.add_argument("--no-xref-stream", action = "store_true", help = "Do not write the XRef table as a XRef stream, but instead write a classical PDF trailer. This will increase the file size a bit, but might improve compatibility with old PDF readers (XRef streams are supported only starting with PDF 1.5). XRef-streams are a prerequisite to object stream compression, so if XRef-streams are disabled, so will also be object streams (e.g, --no-object-streams is implied).")
-parser.add_argument("--no-object-streams", action = "store_true", help = "Do not compress objects into object-streams.")
-parser.add_argument("--no-optimization", action = "store_true", help = "Do not perform any optimization or filters on the source PDF whatsoever, just read it in and write it back out.")
+parser.add_argument("--no-optimization", action = "store_true", help = "Do not perform any optimization or filters on the source PDF whatsoever, just read it in and write it back out. This is useful to debug the PDF reader/writer facilities without introducing other sources of malformed PDF generation.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Show verbose messages during conversation. Can be specified multiple times to increase log level.")
 parser.add_argument("infile", metavar = "pdf_in", type = str, help = "Input PDF file.")
 parser.add_argument("outfile", metavar = "pdf_out", type = str, help = "Output PDF file.")
@@ -89,5 +106,18 @@ new_size = os.stat(args.outfile).st_size
 if args.verbose:
 	percent = 100 * new_size / old_size
 	saved = old_size - new_size
-	log.info("File size %s -> %s (%.0f%%, %s saved)" % (fsf(old_size), fsf(new_size), percent, fsf(saved)))
+
+	details = [ ]
+	details.append("%.0f%% of original" % (percent))
+	if saved > 0:
+		details.append("%s saved" % (fsf(saved)))
+	else:
+		details.append("%s growth" % (fsf(-saved)))
+
+	if saved > 0:
+		details.append("ratio %.1f : 1" % (old_size / new_size))
+	else:
+		details.append("ratio 1 : %.1f" % (new_size / old_size))
+
+	log.info("File size %s -> %s (%s)" % (fsf(old_size), fsf(new_size), ", ".join(details)))
 
