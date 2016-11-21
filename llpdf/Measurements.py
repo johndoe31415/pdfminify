@@ -20,30 +20,59 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-class Measurements(object):
-	_UNITS = {
-		"mm":			1,
-		"cm":			10,
-		"native":		1 / 72 * 25.4,
-		"inch":			25.4,
-	}
+import collections
 
+
+class Measurements(object):
+	_UnitDefinition = collections.namedtuple("UnitDefinition", [ "name", "factor", "format", "abbreviation" ])
+
+	_UNITS = {
+		"mm":		_UnitDefinition(name = "mm", factor = 1, format = "%.1f", abbreviation = " mm"),
+		"cm":		_UnitDefinition(name = "cm", factor = 10, format = "%.2f", abbreviation = " cm"),
+		"native":	_UnitDefinition(name = "native", factor = 1 / 72 * 25.4, format = "%.0f", abbreviation = " u"),
+		"inch":		_UnitDefinition(name = "inch", factor = 25.4, format = "%.2f", abbreviation = "\""),
+	}
+	_DEFAULT_UNIT = "native"
+	
 	@classmethod
 	def convert(cls, value, from_unit, to_unit):
-		from_scalar = cls._UNITS[from_unit]
-		to_scalar = cls._UNITS[to_unit]
+		from_scalar = cls._UNITS[from_unit].factor
+		to_scalar = cls._UNITS[to_unit].factor
 		return value / to_scalar * from_scalar
 
 	@classmethod
 	def list_units(cls):
 		return sorted(cls._UNITS.keys())
 
+	@classmethod
+	def set_default_unit(cls, unit):
+		assert(unit in cls._UNITS)
+		cls._DEFAULT_UNIT = unit
+
+	@classmethod
+	def format(cls, value, unit, to_unit = None, suffix = True):
+		if to_unit is None:
+			to_unit = cls._DEFAULT_UNIT
+		from_unit = cls._UNITS[unit]
+		to_unit = cls._UNITS[to_unit]
+		scaled_value = value / to_unit.factor * from_unit.factor
+		result = to_unit.format % scaled_value
+		if suffix:
+			result += to_unit.abbreviation
+		return result
+
 if __name__ == "__main__":
 	for unit in Measurements.list_units():
-		value = Measurements.convert(1, "cm", unit)
-		print("1 cm = %.1f %s" % (value, unit))
+		print("1 cm = %s" % (Measurements.format(1, "cm", unit)))
 	print()
-	for unit in Measurements.list_units():
-		value = Measurements.convert(1, unit, "cm")
-		print("1 %s = %.1f cm" % (unit, value))
 
+	Measurements.set_default_unit("cm")
+	for unit in Measurements.list_units():
+		print("1 %s = %s" % (unit, Measurements.format(1, unit)))
+
+	print()
+	Measurements.set_default_unit("mm")
+	print(Measurements.format(0.1, "mm"))
+	print(Measurements.format(0.01, "cm"))
+	print(Measurements.format(1, "native"))
+	print(Measurements.format(0.01, "inch"))
