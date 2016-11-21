@@ -21,8 +21,6 @@
 #
 
 from .PDFFilter import PDFFilter
-from llpdf.types.PDFName import PDFName
-from llpdf.Measurements import Measurements
 
 class RemoveMetadataFilter(PDFFilter):
 	def _strip_key(self, key):
