@@ -151,7 +151,7 @@ class PDFAFilter(PDFFilter):
 			return data_structure
 
 	def _add_color_profile(self):
-		profile_data = open("profile", "rb").read()
+		profile_data = open("sRGB_IEC61966-2-1_black_scaled.icc", "rb").read()
 		stream = zlib.compress(profile_data)
 		content = {
 			PDFName("/Filter"):		PDFName("/FlateDecode"),
@@ -219,3 +219,7 @@ class PDFAFilter(PDFFilter):
 				obj.content[PDFName("/OutputIntents")] = color_intent_xref
 				obj.content[PDFName("/Metadata")] = metadata_xref
 
+		# Set all annotations with annotation flag "printable" (4)
+		for obj in self._pdf:
+			if isinstance(obj.content, dict) and (PDFName("/Type") in obj.content) and (obj.content[PDFName("/Type")] == PDFName("/Annot")):
+				obj.content[PDFName("/F")] = 4
