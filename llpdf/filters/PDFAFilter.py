@@ -22,9 +22,11 @@
 
 import os
 import zlib
+import uuid
 from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
+from llpdf.types.Timestamp import Timestamp
 
 _xpacket_template = """\
 <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
@@ -40,24 +42,40 @@ _xpacket_template = """\
             xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/"
             xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#"
             xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-         <xmp:CreatorTool>cairo 1.14.6 (http://cairographics.org)</xmp:CreatorTool>
-         <xmp:ModifyDate>2016-11-21T12:02:03-08:00</xmp:ModifyDate>
-         <xmp:CreateDate>2016-11-21T12:02:03-08:00</xmp:CreateDate>
-         <xmp:MetadataDate>2016-11-21T12:02:03-08:00</xmp:MetadataDate>
-         <pdf:Producer>cairo 1.14.6 (http://cairographics.org)</pdf:Producer>
          <dc:format>application/pdf</dc:format>
-         <xmpMM:DocumentID>uuid:acc9d5ca-05a3-4df7-b9b4-2a284089bae3</xmpMM:DocumentID>
-         <xmpMM:InstanceID>uuid:3316c452-5ba5-4d57-8ebf-1f2cd7c4bcea</xmpMM:InstanceID>
+		<dc:description>
+            <rdf:Alt>
+			   <rdf:li xml:lang="x-default">%(description)s</rdf:li>
+            </rdf:Alt>
+         </dc:description>
+         <dc:title>
+            <rdf:Alt>
+               <rdf:li xml:lang="x-default">%(title)s</rdf:li>
+            </rdf:Alt>
+         </dc:title>
+         <dc:creator>
+            <rdf:Seq>
+               <rdf:li>%(creator)s</rdf:li>
+            </rdf:Seq>
+         </dc:creator>
+         <xmp:CreateDate>%(create_date)s</xmp:CreateDate>
+         <xmp:CreatorTool>%(creator_tool)s</xmp:CreatorTool>
+         <xmp:ModifyDate>%(modify_date)s</xmp:ModifyDate>
+         <xmp:MetadataDate>%(metadata_date)s</xmp:MetadataDate>
+         <pdf:Keywords>%(keywords)s</pdf:Keywords>
+         <pdf:Producer>%(producer)s</pdf:Producer>
+         <xmpMM:DocumentID>uuid:%(document_uuid)s</xmpMM:DocumentID>
+         <xmpMM:InstanceID>uuid:%(instance_uuid)s</xmpMM:InstanceID>
          <xmpMM:RenditionClass>default</xmpMM:RenditionClass>
          <xmpMM:VersionID>1</xmpMM:VersionID>
          <xmpMM:History>
             <rdf:Seq>
                <rdf:li rdf:parseType="Resource">
                   <stEvt:action>converted</stEvt:action>
-                  <stEvt:instanceID>uuid:acc9d5ca-05a3-4df7-b9b4-2a284089bae3</stEvt:instanceID>
+                  <stEvt:instanceID>uuid:%(document_uuid)s</stEvt:instanceID>
                   <stEvt:parameters>converted to PDF/A-1b</stEvt:parameters>
-                  <stEvt:softwareAgent>Preflight</stEvt:softwareAgent>
-                  <stEvt:when>2016-11-21T12:02:03-08:00</stEvt:when>
+                  <stEvt:softwareAgent>pdfminify</stEvt:softwareAgent>
+                  <stEvt:when>%(metadata_date)s</stEvt:when>
                </rdf:li>
             </rdf:Seq>
          </xmpMM:History>
@@ -137,19 +155,6 @@ _xpacket_template = """\
 """
 
 class PDFAFilter(PDFFilter):
-	def _strip_key(self, key):
-		if key.value.startswith("/PTEX"):
-			return True
-		return False
-
-	def _traverse(self, data_structure):
-		if isinstance(data_structure, dict):
-			return { key: self._traverse(value) for (key, value) in data_structure.items() if not self._strip_key(key) }
-		elif isinstance(data_structure, list):
-			return [ self._traverse(value) for value in data_structure ]
-		else:
-			return data_structure
-
 	def _add_color_profile(self):
 		profile_data = open("sRGB_IEC61966-2-1_black_scaled.icc", "rb").read()
 		stream = zlib.compress(profile_data)
@@ -179,8 +184,37 @@ class PDFAFilter(PDFFilter):
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
+	def _get_info(self, key):
+		info_node_xref = self._pdf.trailer[PDFName("/Info")]
+		info_node = self._pdf.lookup(info_node_xref)
+		key = PDFName("/" + key)
+		if key not in info_node.content:
+			return ""
+		else:
+			return info_node.content[key].decode("utf-8")
+
 	def _add_xmp_metadata(self):
-		stream = _xpacket_template.encode("utf-8")
+		info_node_xref = self._pdf.trailer[PDFName("/Info")]
+		info_node = self._pdf.lookup(info_node_xref)
+
+		metadata_date = Timestamp.localnow()
+		modify_date = Timestamp.frompdf(info_node.content[PDFName("/ModDate")].decode("ascii")) if (PDFName("/ModDate") in info_node.content) else metadata_date
+		create_date = Timestamp.frompdf(info_node.content[PDFName("/CreationDate")].decode("ascii")) if (PDFName("/CreationDate") in info_node.content) else metadata_date
+		xmp_metadata = {
+			"creator_tool":		self._get_info("Creator"),
+			"producer":			info_node.content[PDFName("/Producer")].decode("utf-8"),
+			"modify_date":		modify_date.format_xml(),
+			"create_date":		create_date.format_xml(),
+			"metadata_date":	metadata_date.format_xml(),
+			"description":		info_node.content[PDFName("/Subject")].decode("utf-8"),
+			"title":			info_node.content[PDFName("/Title")].decode("utf-8"),
+			"creator":			info_node.content[PDFName("/Author")].decode("utf-8"),
+			"keywords":			self._get_info("Keywords"),
+			"document_uuid":	str(uuid.uuid4()),
+			"instance_uuid":	str(uuid.uuid4()),
+		}
+
+		stream = (_xpacket_template % xmp_metadata).encode("utf-8")
 		content = {
 			PDFName("/Type"):			PDFName("/Metadata"),
 			PDFName("/Subtype"):		PDFName("/XML"),
@@ -204,6 +238,11 @@ class PDFAFilter(PDFFilter):
 			if PDFName("/Group") in page.content:
 				del page.content[PDFName("/Group")]
 
+		# No transparency groups in Form XObjects
+		for obj in self._pdf:
+			if (obj.getattr(PDFName("/Type")) == PDFName("/XObject")) and (obj.getattr(PDFName("/Subtype")) == PDFName("/Form")) and (obj.getattr(PDFName("/Group")) is not None):
+				del obj.content[PDFName("/Group")]
+
 		# Add color profile data
 		color_profile_xref = self._add_color_profile()
 
@@ -215,11 +254,11 @@ class PDFAFilter(PDFFilter):
 
 		# Set output intent and metadata reference for all catalogs
 		for obj in self._pdf:
-			if isinstance(obj.content, dict) and (PDFName("/Type") in obj.content) and (obj.content[PDFName("/Type")] == PDFName("/Catalog")):
+			if obj.getattr(PDFName("/Type")) == PDFName("/Catalog"):
 				obj.content[PDFName("/OutputIntents")] = color_intent_xref
 				obj.content[PDFName("/Metadata")] = metadata_xref
 
 		# Set all annotations with annotation flag "printable" (4)
 		for obj in self._pdf:
-			if isinstance(obj.content, dict) and (PDFName("/Type") in obj.content) and (obj.content[PDFName("/Type")] == PDFName("/Annot")):
+			if obj.getattr(PDFName("/Type")) == PDFName("/Annot"):
 				obj.content[PDFName("/F")] = 4

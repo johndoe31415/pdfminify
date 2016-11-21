@@ -148,7 +148,12 @@ class PDFObject(Comparable):
 
 	@property
 	def is_pattern(self):
-		return isinstance(self.content, dict) and (self.content.get(PDFName("/PatternType")) == 1) and (self.content.get(PDFName("/PaintType")) == 1)
+		return (self.getattr(PDFName("/PatternType")) == 1) and (self.getattr(PDFName("/PaintType")) == 1)
+
+	def getattr(self, key):
+		if not isinstance(self.content, dict):
+			return None
+		return self.content.get(key)
 
 	def __len__(self):
 		return 0 if (not self.has_stream) else len(self.stream)
