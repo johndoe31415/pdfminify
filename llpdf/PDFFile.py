@@ -55,7 +55,7 @@ class PDFFile(object):
 		self._fix_object_sizes()
 
 	def crappy_workaround_get_free_objid(self):
-		for objid in range(1, len(self._objs) + 1):
+		for objid in range(1, len(self._objs) + 100):
 			if (objid, 0) not in self._objs:
 				return objid
 

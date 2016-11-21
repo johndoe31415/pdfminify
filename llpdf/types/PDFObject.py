@@ -31,6 +31,10 @@ class PDFObject(Comparable):
 	_OBJ_RE = re.compile("^(?P<obj_header>(?P<objid>\d+)\s+(?P<gennum>\d+)\s+obj?)")
 
 	def __init__(self, objid, gennum, rawdata):
+		assert(objid is not None)
+		assert(gennum is not None)
+		assert(isinstance(objid, int))
+		assert(isinstance(gennum, int))
 		self._objid = objid
 		self._gennum = gennum
 		if rawdata is not None:
