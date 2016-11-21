@@ -29,9 +29,6 @@ from llpdf.types.PDFName import PDFName
 
 class FlattenImageOptimization(PDFFilter):
 	def run(self):
-		if not self._args.remove_alpha:
-			return
-
 		reformatter = ImageReformatter(target_format = PDFImageType.FlateDecode, scale_factor = 1)
 		for image_obj in self._pdf.image_objects:
 			if PDFName("/SMask") in image_obj.content:

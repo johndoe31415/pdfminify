@@ -24,9 +24,21 @@ from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.Measurements import Measurements
 
-class AddCropBoxFilter(PDFFilter):
+class RemoveMetadataFilter(PDFFilter):
+	def _strip_key(self, key):
+		if key.value.startswith("/PTEX"):
+			return True
+		return False
+
+	def _traverse(self, data_structure):
+		if isinstance(data_structure, dict):
+			return { key: self._traverse(value) for (key, value) in data_structure.items() if not self._strip_key(key) }
+		elif isinstance(data_structure, list):
+			return [ self._traverse(value) for value in data_structure ]
+		else:
+			return data_structure
+
 	def run(self):
-		native_values = [ Measurements.convert(value, self._args.unit, "native") for value in self._args.cropbox ]
-		native_cropbox = [ native_values[0], native_values[1], native_values[0] + native_values[2], native_values[1] + native_values[3] ]
-		for page in self._pdf.pages:
-			page.content[PDFName("/CropBox")] = native_cropbox
+		for obj in self._pdf:
+			content = self._traverse(obj.content)
+			obj.set_content(content)

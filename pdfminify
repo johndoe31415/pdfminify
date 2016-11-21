@@ -46,8 +46,8 @@ def _intrange(minvalue, maxvalue):
 	return convert
 
 parser = FriendlyArgumentParser()
-parser.add_argument("--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
-parser.add_argument("--jpeg-images", action = "store_true", help = "Convert images to JPEG format. This means that lossy compression is used that however often yields a much higher compression ratio.")
+parser.add_argument("-d", "--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
+parser.add_argument("-j", "--jpeg-images", action = "store_true", help = "Convert images to JPEG format. This means that lossy compression is used that however often yields a much higher compression ratio.")
 parser.add_argument("--jpeg-quality", metavar = "percent", type = _intrange(0, 100), default = 85, help = "When converting images to JPEG format, the parameter gives the compression quality. It is an integer from 0-100 (higher is better, but creates also larger output files).")
 
 parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Crop pages by additionally adding a /CropBox to all pages of the PDF file. Pages will be cropped at offset (x, y) to a width (w, h). Must be given in the format x,y,w,h. The unit in which offset, width and height are given can be specified using the --unit parameter.")
@@ -56,6 +56,8 @@ parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default
 parser.add_argument("--one-bit-alpha", action = "store_true", help = "Force all alpha channels in images to use a color depth of one bit. This will make transparent images have rougher edges, but saves additional space.")
 parser.add_argument("--remove-alpha", action = "store_true", help = "Entirely remove the alpha channel (i.e., transparency) of all images. The color which with transparent areas are replaced with can be specified using the --background-color command line option.")
 parser.add_argument("--background-color", metavar = "color", type = str, default = "white", help = "When removing alpha channels, specifies the color that should be used as background. Defaults to %(default)s. Hexadecimal values can be specified as well in the format '#rrggbb'.")
+
+parser.add_argument("--strip-metadata", action = "store_true", help = "Strip metadata inside PDF objects that is not strictly required, such as /PTEX.* entries inside object content.")
 
 parser.add_argument("--saveimgdir", metavar = "path", type = str, help = "When specified, save all handled images as individual files into the specified directory. Useful for image extraction from a PDF as well as debugging.")
 parser.add_argument("--raw-output", action = "store_true", help = "When saving images externally, save them in exactly the format in which they're also present inside the PDF. Note that this will produce raw image files in some cases which won't have any header (but just contain pixel data). Less useful for image extraction, but can make sense for debugging.")
@@ -74,15 +76,15 @@ args = parser.parse_args(sys.argv[1:])
 llpdf.configure_logging(args.verbose)
 llpdf.Measurements.set_default_unit(args.unit)
 
-pdf_filter_classes = [
+pdf_filter_classes = filter(lambda x: x is not None, [
 	llpdf.filters.RemoveDuplicateImageOptimization,
-	llpdf.filters.FlattenImageOptimization,
+	llpdf.filters.RemoveMetadataFilter if args.strip_metadata else None,
+	llpdf.filters.FlattenImageOptimization if args.remove_alpha else None,
 	llpdf.filters.DownscaleImageOptimization,
-	llpdf.filters.AddCropBoxFilter,
+	llpdf.filters.AddCropBoxFilter if args.cropbox else None,
 	llpdf.filters.ExplicitLengthFilter,
 	llpdf.filters.DeleteOrphanedObjectsFilter,
-]
-
+])
 log = logging.getLogger("llpdf")
 
 fsf = FilesizeFormatter()
