@@ -132,6 +132,10 @@ class TransformationMatrix(object):
 		(xoffset, yoffset) = (min(x0, x1), min(y0, y1))
 		return NativeImageExtents(x = xoffset, y = yoffset, width = width, height = height)
 
+	def __eq__(self, other):
+		abs_diff_sum = sum(abs(x - y) for (x, y) in zip(self.aslist, other.aslist))
+		return abs_diff_sum < 1e-6
+
 	def __imul__(self, other):
 		return TransformationMatrix(
 			self.a * other.a + self.b * other.c,
@@ -141,6 +145,10 @@ class TransformationMatrix(object):
 			self.e * other.a + self.f * other.c + other.e,
 			self.e * other.b + self.f * other.d + other.f,
 		)
+
+	@property
+	def is_identity(self):
+		return self == self.identity()
 
 	@classmethod
 	def scale(cls, scale_factor):
@@ -161,6 +169,9 @@ class TransformationMatrix(object):
 		return value
 
 	def __str__(self):
-		values = (self.a, self.b, self.c, self.d, self.e, self.f)
-		values = ", ".join(self._float_format(value) for value in values)
+		if self.is_identity:
+			values = "identity"
+		else:
+			values = (self.a, self.b, self.c, self.d, self.e, self.f)
+			values = ", ".join(self._float_format(value) for value in values)
 		return "Matrix<%s>" % (values)
