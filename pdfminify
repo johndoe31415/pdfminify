@@ -75,6 +75,7 @@ parser.add_argument("--no-object-streams", action = "store_true", help = "Do not
 parser.add_argument("--pdfa-1b", action = "store_true", help = "Try to create a PDF/A-1b compliant PDF document. Implies --no-xref-stream, --no-object-streams, --remove-alpha, removes transpacency groups and adds a PDF/A entry into XMP metadata.")
 parser.add_argument("--color-profile", metavar = "iccfile", help = "When creating a PDF/A-1b PDF, gives the Internal Color Consortium (ICC) color profile that should be embedded into the PDF as part of the output intent. When omitted, it defaults to the sRGB IEC61966 v2 \"black scaled\" profile which is included within pdfminify.")
 
+parser.add_argument("--no-pdf-tagging", action = "store_true", help = "Omit tagging the PDF file with a reference to pdfminify and the used version.")
 parser.add_argument("--decompress-data", action = "store_true", help = "Decompress all FlateDecode compressed data in the file. Useful only for debugging.")
 parser.add_argument("--analyze", action = "store_true", help = "Perform an analysis of the read PDF file and dump out useful information about it.")
 parser.add_argument("--dump-xref-table", action = "store_true", help = "Dump out the XRef table that was read from the input PDF file. Mainly useful for debugging.")
@@ -96,6 +97,7 @@ pdf_filter_classes = [ filter_class for filter_class in [
 	llpdf.filters.AddCropBoxFilter if (args.cropbox and (not args.no_filters)) else None,
 	llpdf.filters.ExplicitLengthFilter if (not args.no_filters) else None,
 	llpdf.filters.DeleteOrphanedObjectsFilter if (not args.no_filters) else None,
+	llpdf.filters.TagFilter if (not (args.no_filters or args.no_pdf_tagging)) else None,
 	llpdf.filters.PDFAFilter if (args.pdfa_1b and (not args.no_filters)) else None,
 	llpdf.filters.DecompressFilter if args.decompress_data else None,
 ] if filter_class is not None ]

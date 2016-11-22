@@ -67,20 +67,6 @@ class PDFAFilter(PDFFilter):
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
-	def _get_info(self, key):
-		info_node_xref = self._pdf.trailer[PDFName("/Info")]
-		info_node = self._pdf.lookup(info_node_xref)
-		key = PDFName("/" + key)
-		if key not in info_node.content:
-			return ""
-		else:
-			bin_value = info_node.content[key]
-			self._log.debug("Info directionary %s = %s", key, bin_value)
-			if bin_value.startswith(b"\xfe\xff") or bin_value.startswith(b"\xff\xfe"):
-				return bin_value.decode("utf-16")
-			else:
-				return bin_value.decode("latin1")
-
 	def _add_xmp_metadata(self):
 		info_node_xref = self._pdf.trailer[PDFName("/Info")]
 		info_node = self._pdf.lookup(info_node_xref)
@@ -89,15 +75,15 @@ class PDFAFilter(PDFFilter):
 		modify_date = Timestamp.frompdf(info_node.content[PDFName("/ModDate")].decode("ascii")) if (PDFName("/ModDate") in info_node.content) else metadata_date
 		create_date = Timestamp.frompdf(info_node.content[PDFName("/CreationDate")].decode("ascii")) if (PDFName("/CreationDate") in info_node.content) else metadata_date
 		xmp_metadata = {
-			"creator_tool":			self._get_info("Creator"),
-			"producer":				self._get_info("Producer"),
+			"creator_tool":			self._pdf.get_info("Creator"),
+			"producer":				self._pdf.get_info("Producer"),
 			"modify_date":			modify_date.format_xml(),
 			"create_date":			create_date.format_xml(),
 			"metadata_date":		metadata_date.format_xml(),
-			"description":			self._get_info("Subject"),
-			"title":				self._get_info("Title"),
-			"creator":				self._get_info("Author"),
-			"keywords":				self._get_info("Keywords"),
+			"description":			self._pdf.get_info("Subject"),
+			"title":				self._pdf.get_info("Title"),
+			"creator":				self._pdf.get_info("Author"),
+			"keywords":				self._pdf.get_info("Keywords"),
 			"document_uuid":		str(uuid.uuid4()),
 			"instance_uuid":		str(uuid.uuid4()),
 			"pdfminify_version":	"pdfminify " + llpdf.VERSION,

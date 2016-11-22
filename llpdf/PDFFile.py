@@ -284,6 +284,25 @@ class PDFFile(object):
 		self._log.debug("Created image from %s with alpha %s: %s",img_xref, alpha_channel, image)
 		return image
 
+	def get_info(self, key):
+		info_node_xref = self.trailer[PDFName("/Info")]
+		info_node = self.lookup(info_node_xref)
+		key = PDFName("/" + key)
+		if key not in info_node.content:
+			return ""
+		else:
+			bin_value = info_node.content[key]
+			self._log.debug("Info directionary %s = %s", key, bin_value)
+			if bin_value.startswith(b"\xfe\xff") or bin_value.startswith(b"\xff\xfe"):
+				return bin_value.decode("utf-16")
+			else:
+				return bin_value.decode("latin1")
+
+	def set_info(self, key, value):
+		info_node_xref = self.trailer[PDFName("/Info")]
+		info_node = self.lookup(info_node_xref)
+		info_node.content[PDFName("/" + key)] = value.encode("latin1")
+
 	def get_free_objid(self):
 		for objid in range(1, len(self._objs) + 2):
 			if (objid, 0) not in self._objs:
