@@ -60,6 +60,9 @@ class StreamRepr(object):
 			self._offset = len(self._buf)
 		self._offset = offset
 
+	def advance(self, offset):
+		self.seek(self.tell() + offset)
+
 	def tempseek(self, offset):
 		tempseek_obj = _TempSeekObject(self)
 		self.seek(offset)
@@ -100,6 +103,9 @@ class StreamRepr(object):
 				return None
 			if len(next_token[0].strip(b"\r\n\t ")) > 0:
 				return next_token
+
+	def read_n_tokens(self, count):
+		return [ self.read_next_token()[0] for i in range(count) ]
 
 	def readline(self):
 		(data, terminal) = self.read_until([ b"\r\n", b"\n", b"\r" ])

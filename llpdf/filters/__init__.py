@@ -29,3 +29,4 @@ from .FlattenImageOptimization import FlattenImageOptimization
 from .RemoveMetadataFilter import RemoveMetadataFilter
 from .PDFAFilter import PDFAFilter
 from .DecompressFilter import DecompressFilter
+from .AnalyzeFilter import AnalyzeFilter

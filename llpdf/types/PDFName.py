@@ -32,6 +32,10 @@ class PDFName(Comparable):
 		assert(name.startswith("/"))
 		self._name = self._HEX_CHAR.sub(lambda match: chr(int(match.group(1), 16)), name)
 
+	@property
+	def display_name(self):
+		return self._name
+
 	def cmpkey(self):
 		return ("PDFName", self._name)
 
