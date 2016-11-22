@@ -78,21 +78,37 @@ class StreamRepr(object):
 			if len(new_data) == 0:
 				break
 			result += new_data
-			for terminal in terminals:
-				idx = result.find(terminal, max(len(result) - chunksize - len(terminal), 0))
-				if idx != -1:
-					result = result[:idx]
-					self.seek(pos + len(result) + len(terminal))
-					return (result, terminal)
+			found_terminals = [ (result.find(terminal, max(len(result) - chunksize - len(terminal), 0)), terminal) for terminal in terminals ]
+			found_terminals = [ (idx, terminal) for (idx, terminal) in found_terminals if (idx != -1) ]
+			if len(found_terminals) > 0:
+				found_terminals.sort(key = lambda occurence: occurence[0] - len(occurence[1]))
+				(idx, terminal) = found_terminals[0]
+				result = result[:idx]
+				self.seek(pos + len(result) + len(terminal))
+				return (result, terminal)
+
+	def read_until_token(self, token):
+		# TODO: This is a performance disaster. Fix me later.
+		possibilities = [ token + b"\r\n", token + b"\r", token + b"\n", token + b"\t", token + b" " ]
+		return self.read_until(possibilities)
+
+	def read_next_token(self):
+		possibilities = [ b"\r\n", b"\r", b"\n", b"\t", b" " ]
+		while True:
+			next_token = self.read_until(possibilities)
+			if next_token is None:
+				return None
+			if len(next_token[0].strip(b"\r\n\t ")) > 0:
+				return next_token
 
 	def readline(self):
-		(data, terminal) = self.read_until([ b"\n", b"\r\n", b"\r" ])
+		(data, terminal) = self.read_until([ b"\r\n", b"\n", b"\r" ])
 		return data
 
 	def readline_nonempty(self):
 		while True:
 			line = self.readline()
-			if line != b"":
+			if line.strip(b"\r\n \t") != b"":
 				return line
 
 	@classmethod
@@ -100,3 +116,9 @@ class StreamRepr(object):
 		data = f.read()
 		return cls(data)
 
+if __name__ == "__main__":
+	f = StreamRepr(b"foobar barfoo mookoo\rline2\n")
+	print(f.readline())
+#	print(f.read_next_token())
+#	print(f.read_next_token())
+#	print(f.read_next_token())

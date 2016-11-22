@@ -47,8 +47,7 @@ class PDFFile(object):
 		self._objs = { }
 		self._xref_table = XRefTable()
 		self._trailer = None
-		self._read_objects()
-		self._read_endfile()
+		self._read_pdf()
 		self._log.debug("Finished reading PDF file. %d objects found.", len(self._objs))
 		self._unpack_objstrms()
 		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
@@ -130,10 +129,16 @@ class PDFFile(object):
 	@property
 	def pages(self):
 		if self._trailer is None:
-			raise Exception("Cannot get pages without trailer (root node).")
-		root_obj = self.lookup(self._trailer[PDFName("/Root")])
+			self._log.error("Cannot access page data without trailer; returning empty page set.")
+			return [ ]
+		root_xref = self._trailer.get(PDFName("/Root"))
+		if root_xref is None:
+			self._log.error("Cannot access page data without /Root node in trailer; returning empty page set.")
+			return [ ]
+		root_obj = self.lookup(root_xref)
 		if root_obj is None:
-			raise Exception("Root object is not in primary data stream (part of object stream?). Unsupported at the moment.")
+			self._log.error("Cannot access page data without /Root node (failed to lookup %s); returning empty page set.", root_xref)
+			return [ ]
 		pages_obj = self.lookup(root_obj.content[PDFName("/Pages")])
 
 		yield from self._get_pages_from_pages_obj(pages_obj)
@@ -164,13 +169,17 @@ class PDFFile(object):
 		return iter(self._objs.values())
 
 	def _read_objects(self):
-		self._log.debug("Started reading objects.")
+		self._log.debug("Started reading objects at 0x%x.", self._f.tell())
+		objcnt = 0
 		while True:
 			obj = PDFObject.parse(self._f)
 			if obj is None:
 				break
+			objcnt += 1
 			self._log.debug("Read object: %s", obj)
 			self._objs[(obj.objid, obj.gennum)] = obj
+		self._log.debug("Finished reading %d objects at 0x%x.", objcnt, self._f.tell())
+		return objcnt
 
 	def _fix_object_sizes(self):
 		self._log.debug("Fixing object sizes of indirect referenced /Length fields")
@@ -190,16 +199,19 @@ class PDFFile(object):
 		return line
 
 	def _read_trailer(self):
-		self._log.debug("Started reading trailer.")
-		(trailer_data, delimiter) = self._f.read_until([ b"startxref\r\n", b"startxref\n" ])
+		self._log.debug("Started reading trailer at 0x%x.", self._f.tell())
+		(trailer_data, delimiter) = self._f.read_until_token(b"startxref")
 		trailer_data = trailer_data.decode("latin1")
 		self._trailer = PDFParser.parse(trailer_data)
 		self._f.seek(self._f.tell() - len(delimiter))
 
 	def _read_endfile(self):
+		self._log.debug("Reading end-of-file data at 0x%x.", self._f.tell())
 		while True:
-			line = self._read_textline()
-			if line == "xref":
+			line = self._read_textline().strip("\r\n ")
+			if line == "":
+				continue
+			elif line == "xref":
 				self._xref_table.read_xref_table_from_file(self._f)
 			elif line == "trailer":
 				self._read_trailer()
@@ -217,9 +229,21 @@ class PDFFile(object):
 						bin_xref_data = zlib.decompress(xref_object.stream)
 						self._xref_table.parse_xref_object(bin_xref_data, self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
 			elif line == "%%EOF":
+				self._log.debug("Hit EOF marker at 0x%x.", self._f.tell())
 				break
 			else:
-				raise Exception("Unknown end file token '%s'." % (line))
+				raise Exception("Unknown end file token '%s' at offset 0x%x." % (line, self._f.tell()))
+
+	def _read_pdf(self):
+		generation = 0
+		while True:
+			generation += 1
+			self._log.debug("Trying to read generation %d data at offset 0x%x", generation, self._f.tell())
+			objcnt = self._read_objects()
+			if objcnt == 0:
+				self._log.debug("No more data to read at 0x%x.", self._f.tell())
+				break
+			self._read_endfile()
 
 	def _unpack_objstrm(self, objstrm_obj):
 		if objstrm_obj.content[PDFName("/Filter")] != PDFName("/FlateDecode"):

@@ -40,7 +40,7 @@ def interpret_escape_char(text):
 		r"\\":		b"\\",
 	}.get(text[0 : 2])
 	if result is None:
-		raise Exception("Unknown escape character sequence %s in string input." % (text))
+		raise Exception("Unknown escape character sequence %s in string input." % (text.encode("utf-8")))
 	return result + text[2:].encode("ascii")
 
 def interpret_escape_numeric(text):

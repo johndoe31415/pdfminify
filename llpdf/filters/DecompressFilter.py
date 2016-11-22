@@ -20,12 +20,14 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-from .DownscaleImageOptimization import DownscaleImageOptimization
-from .RemoveDuplicateImageOptimization import RemoveDuplicateImageOptimization
-from .AddCropBoxFilter import AddCropBoxFilter
-from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
-from .ExplicitLengthFilter import ExplicitLengthFilter
-from .FlattenImageOptimization import FlattenImageOptimization
-from .RemoveMetadataFilter import RemoveMetadataFilter
-from .PDFAFilter import PDFAFilter
-from .DecompressFilter import DecompressFilter
+import zlib
+from .PDFFilter import PDFFilter
+from llpdf.types.PDFName import PDFName
+
+class DecompressFilter(PDFFilter):
+	def run(self):
+		for obj in self._pdf:
+			if obj.has_stream and (PDFName("/Filter") in obj.content) and (obj.content[PDFName("/Filter")] == PDFName("/FlateDecode")):
+				del obj.content[PDFName("/Filter")]
+				obj.set_stream(zlib.decompress(obj.stream))
+				obj.content[PDFName("/Length")] = len(obj.stream)

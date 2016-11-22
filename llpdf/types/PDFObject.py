@@ -25,6 +25,7 @@ from llpdf.repr import PDFParser
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.img.PDFImage import PDFImage
+from llpdf.FileRepr import StreamRepr
 from .Comparable import Comparable
 
 class PDFObject(Comparable):
@@ -38,18 +39,39 @@ class PDFObject(Comparable):
 		self._objid = objid
 		self._gennum = gennum
 		if rawdata is not None:
-			if rawdata.lstrip(b" \r\n").startswith(b"<<") and ((b"stream\r\n" in rawdata) or (b"stream\n" in rawdata)):
-				line_offset = 0
-				offset = rawdata.find(b"stream\n")
-				if offset == -1:
-					line_offset = 1
-					offset = rawdata.find(b"stream\r\n")
-				content = rawdata[:offset]
-				self._stream = rawdata[offset + 7 + line_offset : -(11 + line_offset)]
-			else:
+			strm = StreamRepr(rawdata)
+			stream_begin = strm.read_until_token(b"stream")
+			if stream_begin is None:
+				# No stream in this object found, just content
 				content = rawdata
 				self._stream = None
+			else:
+				(stream_data, end_marker) = strm.read_until_token(b"endstream")
+				content = stream_begin[0]
+				self._stream = stream_data
+
+
+
+
+
+#			if rawdata.lstrip(b" \t\r\n").startswith(b"<<") and ((b"stream\r" in rawdata) or (b"stream\n" in rawdata)):
+#				print(strm)
+#
+#				line_offset = 0
+#				offset = rawdata.find(b"stream\n")
+#				if offset == -1:
+#					line_offset = 1
+#					offset = rawdata.find(b"stream\r\n")
+#				content = rawdata[:offset]
+#				self._stream = rawdata[offset + 7 + line_offset : -(11 + line_offset)]
+
 			content = content.decode("utf-8")
+
+			# Remove line continuations
+			content = content.replace("\\\r\n", "")
+			content = content.replace("\\\n", "")
+			content = content.replace("\\\r", "")
+
 			self._content = PDFParser.parse(content)
 			if (self._stream is not None) and (PDFName("/Length") in self._content) and isinstance(self._content[PDFName("/Length")], int):
 				# When direct length field is given, then truncate the stream
@@ -118,17 +140,18 @@ class PDFObject(Comparable):
 	@classmethod
 	def parse(cls, f):
 		pos = f.tell()
-		header = f.readline_nonempty()
-		header = header.decode("ascii")
-		result = cls._OBJ_RE.match(header)
-		if not result:
+		objid = f.read_next_token()
+		gennum = f.read_next_token()
+		object_start = f.read_next_token()
+		object_data = f.read_until_token(b"endobj")
+
+		if (object_start is None) or (object_data is None) or (object_start[0] != b"obj"):
 			f.seek(pos)
 			return None
-		result = result.groupdict()
-		f.seek(pos + len(result["obj_header"]) + 1)
-		(objid, gennum) = (int(result["objid"]), int(result["gennum"]))
-		(obj_data, obj_end) = f.read_until([ b"endobj\r\n", b"endobj\n", b"endobj \r\n", b"endobj \n", b"endobj " ])
-		return cls(objid = objid, gennum = gennum, rawdata = obj_data)
+
+		objid = int(objid[0].decode("ascii"))
+		gennum = int(gennum[0].decode("ascii"))
+		return cls(objid = objid, gennum = gennum, rawdata = object_data[0])
 
 	@property
 	def content(self):
