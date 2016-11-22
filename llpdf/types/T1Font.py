@@ -20,7 +20,9 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import zlib
 from llpdf.FileRepr import StreamRepr
+from llpdf.types.PDFName import PDFName
 
 class _T1PRNG(object):
 	_C1 = 52845
@@ -62,6 +64,23 @@ class T1Font(object):
 			strm.read_next_token()
 			if name != "/.notdef":
 				yield name
+
+	def get_charset(self):
+		return "".join(self.get_charstrings()).encode("ascii")
+
+	@classmethod
+	def from_fontfile_obj(cls, fontfile_object):
+		length1 = fontfile_object.content[PDFName("/Length1")]
+		length2 = fontfile_object.content[PDFName("/Length2")]
+		length3 = fontfile_object.content[PDFName("/Length3")]
+		data = fontfile_object.stream
+		if fontfile_object.getattr(PDFName("/Filter")) == PDFName("/FlateDecode"):
+			data = zlib.decompress(data)
+
+		cleardata = data[ : length1]
+		cipherdata = data[length1 : length1 + length2]
+		otherdata = data[length1 + length2 : ]
+		return cls(cleardata, cipherdata, otherdata)
 
 	def __str__(self):
 		return "T1Font<%d, %d, %d>" % (len(self._cleardata), len(self._cipherdata), 0)

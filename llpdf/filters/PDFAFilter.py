@@ -27,6 +27,7 @@ from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.Timestamp import Timestamp
+from llpdf.types.T1Font import T1Font
 
 _xpacket_template = """\
 <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
@@ -225,6 +226,19 @@ class PDFAFilter(PDFFilter):
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
+	@staticmethod
+	def type2_font_glyph_count(glyph_widths):
+		index = 0
+		glyph_count = 0
+		while index < len(glyph_widths):
+			if isinstance(glyph_widths[index + 1], list):
+				glyph_count += len(glyph_widths[index + 1])
+				index += 2
+			else:
+				glyph_count += (glyph_widths[index + 1] - glyph_widths[index + 0] + 1)
+				index += 3
+		return glyph_count
+
 	def run(self):
 		# Put an ID into the PDF
 		self._pdf.trailer[PDFName("/ID")] = [ os.urandom(16), os.urandom(16) ]
@@ -262,3 +276,46 @@ class PDFAFilter(PDFFilter):
 		for obj in self._pdf:
 			if obj.getattr(PDFName("/Type")) == PDFName("/Annot"):
 				obj.content[PDFName("/F")] = 4
+
+		fixed_descriptors = set()
+		for obj in list(self._pdf):
+			if obj.getattr(PDFName("/Type")) == PDFName("/Font"):
+				font_obj = obj
+
+				if font_obj.getattr(PDFName("/Subtype")) == PDFName("/CIDFontType2"):
+					# Type2 fonts need to have a CIDtoGIDMap
+					font_obj.content[PDFName("/CIDToGIDMap")] = PDFName("/Identity")
+
+				if PDFName("/FontDescriptor") in font_obj.content:
+					font_descriptor_xref = font_obj.content[PDFName("/FontDescriptor")]
+					if font_descriptor_xref in fixed_descriptors:
+						continue
+					fixed_descriptors.add(font_descriptor_xref)
+
+					font_descriptor_obj = self._pdf.lookup(font_descriptor_xref)
+					if font_obj.getattr(PDFName("/Subtype")) == PDFName("/Type1"):
+						# Update Type1 font descriptors with missing CharSet entries
+						font_file_obj = self._pdf.lookup(font_descriptor_obj.content[PDFName("/FontFile")])
+						t1_font = T1Font.from_fontfile_obj(font_file_obj)
+						charset = t1_font.get_charset()
+						font_descriptor_obj.content[PDFName("/CharSet")] = charset
+					elif font_obj.getattr(PDFName("/Subtype")) == PDFName("/CIDFontType2"):
+						# Type2 font descriptors need to have a CIDSet
+						glyph_count = self.type2_font_glyph_count(font_obj.content[PDFName("/W")])
+
+						full_bytes = glyph_count // 8
+						set_bits = glyph_count % 8
+						last_byte = ((1 << set_bits) - 1) << (8 - set_bits)
+						self._log.debug("Assuming CIDSet for %d glyphs of %d full 0xff bytes and a final value of 0x%x.", glyph_count, full_bytes, last_byte)
+
+						cidset_objid = self._pdf.crappy_workaround_get_free_objid()
+						stream = zlib.compress((bytes([ 0xff ]) * full_bytes) + bytes([ last_byte ]))
+						pdf_object = PDFObject.create(cidset_objid, gennum = 0, content = {
+							PDFName("/Length"):		len(stream),
+							PDFName("/Filter"):		PDFName("/FlateDecode"),
+						}, stream = stream)
+						self._pdf.replace_object(pdf_object)
+
+						font_descriptor_obj.content[PDFName("/CIDSet")] = pdf_object.xref
+
+

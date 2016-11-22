@@ -87,21 +87,18 @@ args = parser.parse_args(sys.argv[1:])
 llpdf.configure_logging(args.verbose)
 llpdf.Measurements.set_default_unit(args.unit)
 
-if not args.no_filters:
-	pdf_filter_classes = [ filter_class for filter_class in [
-		llpdf.filters.AnalyzeFilter if args.analyze else None,
-		llpdf.filters.RemoveDuplicateImageOptimization,
-		llpdf.filters.RemoveMetadataFilter if args.strip_metadata else None,
-		llpdf.filters.FlattenImageOptimization if (args.remove_alpha or args.pdfa_1b) else None,
-		llpdf.filters.DownscaleImageOptimization if (not args.no_downscaling) else None,
-		llpdf.filters.AddCropBoxFilter if args.cropbox else None,
-		llpdf.filters.ExplicitLengthFilter,
-		llpdf.filters.DeleteOrphanedObjectsFilter,
-		llpdf.filters.PDFAFilter if args.pdfa_1b else None,
-		llpdf.filters.DecompressFilter if args.decompress_data else None,
-	] if filter_class is not None ]
-else:
-	pdf_filter_classes = [ ]
+pdf_filter_classes = [ filter_class for filter_class in [
+	llpdf.filters.AnalyzeFilter if args.analyze else None,
+	llpdf.filters.RemoveDuplicateImageOptimization if (not args.no_filters) else None,
+	llpdf.filters.RemoveMetadataFilter if (args.strip_metadata and (not args.no_filters)) else None,
+	llpdf.filters.FlattenImageOptimization if ((args.remove_alpha or args.pdfa_1b) and (not args.no_filters)) else None,
+	llpdf.filters.DownscaleImageOptimization if ((not args.no_downscaling) and (not args.no_filters)) else None,
+	llpdf.filters.AddCropBoxFilter if (args.cropbox and (not args.no_filters)) else None,
+	llpdf.filters.ExplicitLengthFilter if (not args.no_filters) else None,
+	llpdf.filters.DeleteOrphanedObjectsFilter if (not args.no_filters) else None,
+	llpdf.filters.PDFAFilter if (args.pdfa_1b and (not args.no_filters)) else None,
+	llpdf.filters.DecompressFilter if args.decompress_data else None,
+] if filter_class is not None ]
 log = logging.getLogger("llpdf")
 
 fsf = FilesizeFormatter()
