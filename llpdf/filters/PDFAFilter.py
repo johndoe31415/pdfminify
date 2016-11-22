@@ -72,7 +72,12 @@ class PDFAFilter(PDFFilter):
 		if key not in info_node.content:
 			return ""
 		else:
-			return info_node.content[key].decode("utf-8")
+			bin_value = info_node.content[key]
+			self._log.debug("Info directionary %s = %s", key, bin_value)
+			if bin_value.startswith(b"\xfe\xff") or bin_value.startswith(b"\xff\xfe"):
+				return bin_value.decode("utf-16")
+			else:
+				return bin_value.decode("utf-8")
 
 	def _add_xmp_metadata(self):
 		info_node_xref = self._pdf.trailer[PDFName("/Info")]
@@ -83,7 +88,7 @@ class PDFAFilter(PDFFilter):
 		create_date = Timestamp.frompdf(info_node.content[PDFName("/CreationDate")].decode("ascii")) if (PDFName("/CreationDate") in info_node.content) else metadata_date
 		xmp_metadata = {
 			"creator_tool":		self._get_info("Creator"),
-			"producer":			info_node.content[PDFName("/Producer")].decode("utf-8"),
+			"producer":			self._get_info("Producer"),
 			"modify_date":		modify_date.format_xml(),
 			"create_date":		create_date.format_xml(),
 			"metadata_date":	metadata_date.format_xml(),
