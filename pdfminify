@@ -55,6 +55,7 @@ parser = FriendlyArgumentParser()
 parser.add_argument("-d", "--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
 parser.add_argument("-j", "--jpeg-images", action = "store_true", help = "Convert images to JPEG format. This means that lossy compression is used that however often yields a much higher compression ratio.")
 parser.add_argument("--jpeg-quality", metavar = "percent", type = _intrange(0, 100), default = 85, help = "When converting images to JPEG format, the parameter gives the compression quality. It is an integer from 0-100 (higher is better, but creates also larger output files).")
+parser.add_argument("--no-downscaling", action = "store_true", help = "Do not apply downscaling filter on the PDF, take all images as they are.")
 
 parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Crop pages by additionally adding a /CropBox to all pages of the PDF file. Pages will be cropped at offset (x, y) to a width (w, h). Must be given in the format x,y,w,h. The unit in which offset, width and height are given can be specified using the --unit parameter.")
 parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit of measurement that is used for input and output. Can be any of %(choices)s, defaults to %(default)s. One native PDF unit equals 1/72th of an inch.")
@@ -71,11 +72,11 @@ parser.add_argument("--pretty-pdf", action = "store_true", help = "Write pretty 
 
 parser.add_argument("--no-xref-stream", action = "store_true", help = "Do not write the XRef table as a XRef stream, but instead write a classical PDF XRef table and trailer. This will increase the file size a bit, but might improve compatibility with old PDF readers (XRef streams are supported only starting with PDF 1.5). XRef-streams are a prerequisite to object stream compression, so if XRef-streams are disabled, so will also be object streams (e.g, --no-object-streams is implied).")
 parser.add_argument("--no-object-streams", action = "store_true", help = "Do not compress objects into object-streams. Object stream compression is introduced with PDF 1.5 and means that multiple simple objects (without any stream data) are concatenated together and compressed together into one large stream object.")
-if os.path.isfile(".dev"):
-	parser.add_argument("--pdfa-1b", action = "store_true", help = "Try to create a PDF/A-1b compliant PDF document. Implies --no-xref-stream, --no-object-streams, --remove-alpha, removes transpacency groups and adds a PDF/A entry into XMP metadata.")
+parser.add_argument("--pdfa-1b", action = "store_true", help = argparse.SUPPRESS)
+#"Try to create a PDF/A-1b compliant PDF document. Implies --no-xref-stream, --no-object-streams, --remove-alpha, removes transpacency groups and adds a PDF/A entry into XMP metadata.")
 
 parser.add_argument("--dump-xref-table", action = "store_true", help = "Dump out the XRef table that was read from the input PDF file. Mainly useful for debugging.")
-parser.add_argument("--no-optimization", action = "store_true", help = "Do not perform any optimization or filters on the source PDF whatsoever, just read it in and write it back out. This is useful to debug the PDF reader/writer facilities without introducing other sources of malformed PDF generation.")
+parser.add_argument("--no-filters", action = "store_true", help = "Do not apply any filters on the source PDF whatsoever, just read it in and write it back out. This is useful to reformat a PDF and/or debug the PDF reader/writer facilities without introducing other sources of malformed PDF generation.")
 parser.add_argument("-v", "--verbose", action = "count", default = 0, help = "Show verbose messages during conversation. Can be specified multiple times to increase log level.")
 parser.add_argument("infile", metavar = "pdf_in", type = str, help = "Input PDF file.")
 parser.add_argument("outfile", metavar = "pdf_out", type = str, help = "Output PDF file.")
@@ -84,16 +85,19 @@ args = parser.parse_args(sys.argv[1:])
 llpdf.configure_logging(args.verbose)
 llpdf.Measurements.set_default_unit(args.unit)
 
-pdf_filter_classes = filter(lambda x: x is not None, [
-	llpdf.filters.RemoveDuplicateImageOptimization,
-	llpdf.filters.RemoveMetadataFilter if args.strip_metadata else None,
-	llpdf.filters.FlattenImageOptimization if (args.remove_alpha or args.pdfa_1b) else None,
-	llpdf.filters.DownscaleImageOptimization,
-	llpdf.filters.AddCropBoxFilter if args.cropbox else None,
-	llpdf.filters.ExplicitLengthFilter,
-	llpdf.filters.DeleteOrphanedObjectsFilter,
-	llpdf.filters.PDFAFilter if args.pdfa_1b else None,
-])
+if not args.no_filters:
+	pdf_filter_classes = filter(lambda x: x is not None, [
+		llpdf.filters.RemoveDuplicateImageOptimization,
+		llpdf.filters.RemoveMetadataFilter if args.strip_metadata else None,
+		llpdf.filters.FlattenImageOptimization if (args.remove_alpha or args.pdfa_1b) else None,
+		llpdf.filters.DownscaleImageOptimization if (not args.no_downscaling) else None,
+		llpdf.filters.AddCropBoxFilter if args.cropbox else None,
+		llpdf.filters.ExplicitLengthFilter,
+		llpdf.filters.DeleteOrphanedObjectsFilter,
+		llpdf.filters.PDFAFilter if args.pdfa_1b else None,
+	])
+else:
+	pdf_filter_classes = [ ]
 log = logging.getLogger("llpdf")
 
 fsf = FilesizeFormatter()
@@ -104,13 +108,12 @@ with open(args.infile, "rb") as infile, open(args.outfile, "wb") as outfile:
 	if args.dump_xref_table:
 		pdf.xref_table.dump()
 
-	if not args.no_optimization:
-		for pdf_filter_class in pdf_filter_classes:
-			log.debug("Running filter: %s", pdf_filter_class.__name__)
-			pdf_filter = pdf_filter_class(pdf, args)
-			pdf_filter.run()
-			if args.verbose:
-				log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
+	for (filter_no, pdf_filter_class) in enumerate(pdf_filter_classes, 1):
+		log.debug("Running filter %d/%d: %s", filter_no, len(pdf_filter_classes), pdf_filter_class.__name__)
+		pdf_filter = pdf_filter_class(pdf, args)
+		pdf_filter.run()
+		if args.verbose:
+			log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
 
 	use_xref_stream = not (args.no_xref_stream or args.pdfa_1b)
 	use_object_streams = not (args.no_object_streams or args.pdfa_1b)

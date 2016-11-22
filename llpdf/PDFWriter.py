@@ -85,8 +85,6 @@ class PDFWriter(object):
 		self._xref.add_entry(compressed_xref_entry)
 
 	def _write_objs(self):
-		for x in self._pdf:
-			print(x)
 		for obj in sorted(self._pdf):
 			object_compressible = not obj.has_stream
 			if object_compressible and self._use_object_streams:
