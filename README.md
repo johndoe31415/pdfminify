@@ -15,6 +15,11 @@ export are *huge*. Images that are used are included a dozen times and only
 lossless compression is used. Therefore I use pdfminify to decrease the
 filesize later.
 
+Another use for pdfminify is that it is able to convert PDFs into PDF/A-1b
+compliant PDF files. Since this is something that's really difficult to do,
+there are no guarantees regarding the resulting PDF -- please check for
+yourself if the results still behave identical to your source version.
+
 # Acknowledgment
 pdfminify uses the Toy Parser Generator (TPG) of Christophe Delord
 (http://cdsoft.fr/tpg/). It is included (tpg.py file) and licensed under the
