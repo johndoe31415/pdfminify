@@ -20,6 +20,13 @@ compliant PDF files. Since this is something that's really difficult to do,
 there are no guarantees regarding the resulting PDF -- please check for
 yourself if the results still behave identical to your source version.
 
+# Requirements
+pdfminify needs at least Python 3.5. It furthermore uses ImageMagick
+(concretely, the identify and convert tools) It uses the former to determine
+the width, height, colorspace and bits per component of image files and the
+latter to convert images from PNM (the internal format that pdfminify is
+capable of writing natively) to JPEG.
+
 # Acknowledgment
 pdfminify uses the Toy Parser Generator (TPG) of Christophe Delord
 (http://cdsoft.fr/tpg/). It is included (tpg.py file) and licensed under the
@@ -41,12 +48,6 @@ excluded.
 
 TPG (Toy Parser Generator) and the ICC sRGB color profile fall under their
 respective licenses.
-
-# Requirements
-pdfminify uses two external tools: identify and convert (both from
-ImageMagick). It uses the former to determine the width, height, colorspace and
-bits per component of image files and the latter to convert images from PNM
-(the internal format that pdfminify is capable of writing natively) to JPEG.
 
 # PDF reading/writing
 pdfminify uses its own PDF parser because for this particular purpose, neither
