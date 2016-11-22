@@ -49,6 +49,119 @@ excluded.
 TPG (Toy Parser Generator) and the ICC sRGB color profile fall under their
 respective licenses.
 
+# Usage
+```bash
+$ ./pdfminify --help
+usage: pdfminify [-h] [-d dpi] [-j] [--jpeg-quality percent]
+                 [--no-downscaling] [--cropbox box]
+                 [--unit {cm,inch,mm,native}] [--one-bit-alpha]
+                 [--remove-alpha] [--background-color color]
+                 [--strip-metadata] [--saveimgdir path] [--raw-output]
+                 [--pretty-pdf] [--no-xref-stream] [--no-object-streams]
+                 [--pdfa-1b] [--color-profile iccfile] [--no-pdf-tagging]
+                 [--decompress-data] [--analyze] [--dump-xref-table]
+                 [--no-filters] [-v]
+                 pdf_in pdf_out
+
+positional arguments:
+  pdf_in                Input PDF file.
+  pdf_out               Output PDF file.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d dpi, --target-dpi dpi
+                        Default resoulution to which images will be resampled
+                        at. Defaults to 150 dots per inch (dpi).
+  -j, --jpeg-images     Convert images to JPEG format. This means that lossy
+                        compression is used that however often yields a much
+                        higher compression ratio.
+  --jpeg-quality percent
+                        When converting images to JPEG format, the parameter
+                        gives the compression quality. It is an integer from
+                        0-100 (higher is better, but creates also larger
+                        output files).
+  --no-downscaling      Do not apply downscaling filter on the PDF, take all
+                        images as they are.
+  --cropbox box         Crop pages by additionally adding a /CropBox to all
+                        pages of the PDF file. Pages will be cropped at offset
+                        (x, y) to a width (w, h). Must be given in the format
+                        x,y,w,h. The unit in which offset, width and height
+                        are given can be specified using the --unit parameter.
+  --unit {cm,inch,mm,native}
+                        Specify the unit of measurement that is used for input
+                        and output. Can be any of cm, inch, mm, native,
+                        defaults to native. One native PDF unit equals 1/72th
+                        of an inch.
+  --one-bit-alpha       Force all alpha channels in images to use a color
+                        depth of one bit. This will make transparent images
+                        have rougher edges, but saves additional space.
+  --remove-alpha        Entirely remove the alpha channel (i.e., transparency)
+                        of all images. The color which with transparent areas
+                        are replaced with can be specified using the
+                        --background-color command line option.
+  --background-color color
+                        When removing alpha channels, specifies the color that
+                        should be used as background. Defaults to white.
+                        Hexadecimal values can be specified as well in the
+                        format '#rrggbb'.
+  --strip-metadata      Strip metadata inside PDF objects that is not strictly
+                        required, such as /PTEX.* entries inside object
+                        content.
+  --saveimgdir path     When specified, save all handled images as individual
+                        files into the specified directory. Useful for image
+                        extraction from a PDF as well as debugging.
+  --raw-output          When saving images externally, save them in exactly
+                        the format in which they're also present inside the
+                        PDF. Note that this will produce raw image files in
+                        some cases which won't have any header (but just
+                        contain pixel data). Less useful for image extraction,
+                        but can make sense for debugging.
+  --pretty-pdf          Write pretty PDF files, i.e., format all dictionaries
+                        so they're well-readable regarding indentation.
+                        Increases required file size a tiny bit and increases
+                        generation time of the PDF a little, but produces
+                        easily debuggable PDFs.
+  --no-xref-stream      Do not write the XRef table as a XRef stream, but
+                        instead write a classical PDF XRef table and trailer.
+                        This will increase the file size a bit, but might
+                        improve compatibility with old PDF readers (XRef
+                        streams are supported only starting with PDF 1.5).
+                        XRef-streams are a prerequisite to object stream
+                        compression, so if XRef-streams are disabled, so will
+                        also be object streams (e.g, --no-object-streams is
+                        implied).
+  --no-object-streams   Do not compress objects into object-streams. Object
+                        stream compression is introduced with PDF 1.5 and
+                        means that multiple simple objects (without any stream
+                        data) are concatenated together and compressed
+                        together into one large stream object.
+  --pdfa-1b             Try to create a PDF/A-1b compliant PDF document.
+                        Implies --no-xref-stream, --no-object-streams,
+                        --remove-alpha, removes transpacency groups and adds a
+                        PDF/A entry into XMP metadata.
+  --color-profile iccfile
+                        When creating a PDF/A-1b PDF, gives the Internal Color
+                        Consortium (ICC) color profile that should be embedded
+                        into the PDF as part of the output intent. When
+                        omitted, it defaults to the sRGB IEC61966 v2 "black
+                        scaled" profile which is included within pdfminify.
+  --no-pdf-tagging      Omit tagging the PDF file with a reference to
+                        pdfminify and the used version.
+  --decompress-data     Decompress all FlateDecode compressed data in the
+                        file. Useful only for debugging.
+  --analyze             Perform an analysis of the read PDF file and dump out
+                        useful information about it.
+  --dump-xref-table     Dump out the XRef table that was read from the input
+                        PDF file. Mainly useful for debugging.
+  --no-filters          Do not apply any filters on the source PDF whatsoever,
+                        just read it in and write it back out. This is useful
+                        to reformat a PDF and/or debug the PDF reader/writer
+                        facilities without introducing other sources of
+                        malformed PDF generation.
+  -v, --verbose         Show verbose messages during conversation. Can be
+                        specified multiple times to increase log level.
+```
+
 # PDF reading/writing
 pdfminify uses its own PDF parser because for this particular purpose, neither
 PyPDF2 nor pdfrw (which I both tried to use) seem suitable. This PDF
