@@ -45,16 +45,13 @@ class PDFSerializer(object):
 		yield ")"
 
 	def _serialize_bytes(self, obj):
-		if self._pretty:
-			# Try to encode as string first
-			str_string = "".join(self._serialize_string(obj))
-			hex_string_len = 2 + (2 * len(obj))
-			if len(str_string) > hex_string_len:
-				return "".join(self._serialize_hexbytes(obj))
-			else:
-				return str_string
-		else:
+		# Try to encode as string first
+		str_string = "".join(self._serialize_string(obj))
+		hex_string_len = 2 + (2 * len(obj))
+		if len(str_string) > hex_string_len:
 			return "".join(self._serialize_hexbytes(obj))
+		else:
+			return str_string
 
 	def _spacing(self, nesting_level):
 		if self._pretty:
@@ -108,7 +105,7 @@ if __name__ == "__main__":
 		PDFName("/Bar"):	[ 1.234, 4.567, 7.89, 1 / 3 ],
 		PDFName("/Moo"):	{
 			PDFName("/Inner1"):	b"Muh",
-			PDFName("/Inner2"):	"Mäh".encode(),
+			PDFName("/Inner2"):	"Mäh".encode("latin1"),
 		},
 	}
 	print(serializer.serialize(obj))

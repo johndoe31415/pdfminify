@@ -95,7 +95,7 @@ class PDFParser(tpg.VerboseParser):
 							string_escape_numeric/e							$ s += ParseTools.interpret_escape_numeric(e)
 							| string_escape_char/e							$ s += ParseTools.interpret_escape_char(e)
 							| start_string/a PDFInnerString/e end_string/b	$ s += a.encode() + e + b.encode()
-							| string_content/e								$ s += e.encode("utf-8")
+							| string_content/e								$ s += e.encode("latin1")
 						)*
 		;
 

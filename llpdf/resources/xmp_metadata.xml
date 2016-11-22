@@ -34,7 +34,7 @@
 						<stEvt:action>converted</stEvt:action>
 						<stEvt:instanceID>uuid:%(document_uuid)s</stEvt:instanceID>
 						<stEvt:parameters>converted to PDF/A-1b</stEvt:parameters>
-						<stEvt:softwareAgent>pdfminify</stEvt:softwareAgent>
+						<stEvt:softwareAgent>%(pdfminify_version)s</stEvt:softwareAgent>
 						<stEvt:when>%(metadata_date)s</stEvt:when>
 					</rdf:li>
 				</rdf:Seq>

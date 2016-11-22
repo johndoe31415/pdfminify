@@ -25,3 +25,5 @@ from .PDFFile import PDFFile
 from .PDFWriter import PDFWriter
 from .Measurements import Measurements
 from .Logging import configure_logging
+
+VERSION = "0.01"

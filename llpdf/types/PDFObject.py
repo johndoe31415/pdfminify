@@ -50,22 +50,7 @@ class PDFObject(Comparable):
 				content = stream_begin[0]
 				self._stream = stream_data
 
-
-
-
-
-#			if rawdata.lstrip(b" \t\r\n").startswith(b"<<") and ((b"stream\r" in rawdata) or (b"stream\n" in rawdata)):
-#				print(strm)
-#
-#				line_offset = 0
-#				offset = rawdata.find(b"stream\n")
-#				if offset == -1:
-#					line_offset = 1
-#					offset = rawdata.find(b"stream\r\n")
-#				content = rawdata[:offset]
-#				self._stream = rawdata[offset + 7 + line_offset : -(11 + line_offset)]
-
-			content = content.decode("utf-8")
+			content = content.decode("latin1")
 
 			# Remove line continuations
 			content = content.replace("\\\r\n", "")

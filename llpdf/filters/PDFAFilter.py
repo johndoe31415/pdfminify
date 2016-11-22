@@ -24,6 +24,8 @@ import os
 import zlib
 import uuid
 import pkgutil
+
+import llpdf
 from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
@@ -77,7 +79,7 @@ class PDFAFilter(PDFFilter):
 			if bin_value.startswith(b"\xfe\xff") or bin_value.startswith(b"\xff\xfe"):
 				return bin_value.decode("utf-16")
 			else:
-				return bin_value.decode("utf-8")
+				return bin_value.decode("latin1")
 
 	def _add_xmp_metadata(self):
 		info_node_xref = self._pdf.trailer[PDFName("/Info")]
@@ -87,17 +89,18 @@ class PDFAFilter(PDFFilter):
 		modify_date = Timestamp.frompdf(info_node.content[PDFName("/ModDate")].decode("ascii")) if (PDFName("/ModDate") in info_node.content) else metadata_date
 		create_date = Timestamp.frompdf(info_node.content[PDFName("/CreationDate")].decode("ascii")) if (PDFName("/CreationDate") in info_node.content) else metadata_date
 		xmp_metadata = {
-			"creator_tool":		self._get_info("Creator"),
-			"producer":			self._get_info("Producer"),
-			"modify_date":		modify_date.format_xml(),
-			"create_date":		create_date.format_xml(),
-			"metadata_date":	metadata_date.format_xml(),
-			"description":		self._get_info("Subject"),
-			"title":			self._get_info("Title"),
-			"creator":			self._get_info("Author"),
-			"keywords":			self._get_info("Keywords"),
-			"document_uuid":	str(uuid.uuid4()),
-			"instance_uuid":	str(uuid.uuid4()),
+			"creator_tool":			self._get_info("Creator"),
+			"producer":				self._get_info("Producer"),
+			"modify_date":			modify_date.format_xml(),
+			"create_date":			create_date.format_xml(),
+			"metadata_date":		metadata_date.format_xml(),
+			"description":			self._get_info("Subject"),
+			"title":				self._get_info("Title"),
+			"creator":				self._get_info("Author"),
+			"keywords":				self._get_info("Keywords"),
+			"document_uuid":		str(uuid.uuid4()),
+			"instance_uuid":		str(uuid.uuid4()),
+			"pdfminify_version":	"pdfminify " + llpdf.VERSION,
 		}
 
 		xmp_metadata_template = pkgutil.get_data("llpdf.resources", "xmp_metadata.xml").decode("utf-8")
