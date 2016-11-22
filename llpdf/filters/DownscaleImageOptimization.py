@@ -83,7 +83,7 @@ class DownscaleImageOptimization(PDFFilter):
 			try:
 				image = self._pdf.get_image(img_xref)
 			except UnsupportedImageException as e:
-				self._log.error("Ignoring unsupported image %s: %s" % (img_xref, e))
+				self._log.warn("Ignoring unsupported image %s: %s" % (img_xref, e))
 				continue
 			self._save_image(image, img_xref, "original")
 
