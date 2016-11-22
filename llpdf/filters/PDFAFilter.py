@@ -23,6 +23,7 @@
 import os
 import zlib
 import uuid
+import pkgutil
 from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
@@ -157,7 +158,12 @@ _xpacket_template = """\
 
 class PDFAFilter(PDFFilter):
 	def _add_color_profile(self):
-		profile_data = open("sRGB_IEC61966-2-1_black_scaled.icc", "rb").read()
+		if self._args.color_profile is None:
+			profile_data = pkgutil.get_data("llpdf.resources", "sRGB_IEC61966-2-1_black_scaled.icc")
+		else:
+			with open(self._args.color_profile, "rb") as f:
+				profile_data = f.read()
+
 		stream = zlib.compress(profile_data)
 		content = {
 			PDFName("/Filter"):		PDFName("/FlateDecode"),
