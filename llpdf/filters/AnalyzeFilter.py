@@ -68,11 +68,10 @@ class AnalyzeFilter(PDFFilter):
 		else:
 			yield str(element)
 
+	def _dump_object(self, pdf_object):
+		print("".join(self._pretty_print(pdf_object.content)))
 
 	def _print_font(self, font_obj):
-		print("".join(self._pretty_print(font_obj.content)))
-
-
 		if font_obj.getattr(PDFName("/Subtype")) == PDFName("/Type0"):
 			ftype = "T0"
 		elif font_obj.getattr(PDFName("/Subtype")) == PDFName("/Type1"):
@@ -125,11 +124,11 @@ class AnalyzeFilter(PDFFilter):
 				descriptor_charset = [ char for char in descriptor_charset if char != "" ]
 				info.append("CharSet length %d" % (len(descriptor_charset)))
 
-		print("%s Font ObjId=%d: %s" % (ftype, font_obj.objid, ", ".join(info)))
-		#sfdsdf
+		print("Font Object (%s font) ObjId=%d: %s" % (ftype, font_obj.objid, ", ".join(info)))
+		self._dump_object(font_obj)
+		print("-" * 120)
 
 	def run(self):
-		print("Analysis of PDF file")
 		for obj in self._pdf:
 			if obj.getattr(PDFName("/Type")) == PDFName("/Font"):
 				self._print_font(obj)
