@@ -53,11 +53,6 @@ class PDFFile(object):
 		self._log.debug("Finished unpacking all object streams in file. %d objects found total.", len(self._objs))
 		self._fix_object_sizes()
 
-	def crappy_workaround_get_free_objid(self):
-		for objid in range(1, len(self._objs) + 100):
-			if (objid, 0) not in self._objs:
-				return objid
-
 	@property
 	def xref_table(self):
 		return self._xref_table
@@ -288,6 +283,11 @@ class PDFFile(object):
 		image = PDFImage.create_from_object(image, alpha_channel)
 		self._log.debug("Created image from %s with alpha %s: %s",img_xref, alpha_channel, image)
 		return image
+
+	def get_free_objid(self):
+		for objid in range(1, len(self._objs) + 2):
+			if (objid, 0) not in self._objs:
+				return objid
 
 	def delete_object(self, objid, gennum):
 		key = (objid, gennum)

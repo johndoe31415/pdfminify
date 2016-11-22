@@ -47,7 +47,7 @@ class PDFAFilter(PDFFilter):
 			PDFName("/Range"):		[ 0, 1, 0, 1, 0, 1 ],
 			PDFName("/Length"):		len(stream),
 		}
-		objid = self._pdf.crappy_workaround_get_free_objid()
+		objid = self._pdf.get_free_objid()
 		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = stream)
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
@@ -62,7 +62,7 @@ class PDFAFilter(PDFFilter):
 			PDFName("/RegistryName"):				b"",
 			PDFName("/S"):							PDFName("/GTS_PDFA1"),
 		} ]
-		objid = self._pdf.crappy_workaround_get_free_objid()
+		objid = self._pdf.get_free_objid()
 		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = None)
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
@@ -110,7 +110,7 @@ class PDFAFilter(PDFFilter):
 			PDFName("/Subtype"):		PDFName("/XML"),
 			PDFName("/Length"):			len(stream),
 		}
-		objid = self._pdf.crappy_workaround_get_free_objid()
+		objid = self._pdf.get_free_objid()
 		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = stream)
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
@@ -197,7 +197,7 @@ class PDFAFilter(PDFFilter):
 						last_byte = ((1 << set_bits) - 1) << (8 - set_bits)
 						self._log.debug("Assuming CIDSet for %d glyphs of %d full 0xff bytes and a final value of 0x%x.", glyph_count, full_bytes, last_byte)
 
-						cidset_objid = self._pdf.crappy_workaround_get_free_objid()
+						cidset_objid = self._pdf.get_free_objid()
 						stream = zlib.compress((bytes([ 0xff ]) * full_bytes) + bytes([ last_byte ]))
 						pdf_object = PDFObject.create(cidset_objid, gennum = 0, content = {
 							PDFName("/Length"):		len(stream),
