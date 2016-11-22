@@ -30,132 +30,6 @@ from llpdf.types.PDFObject import PDFObject
 from llpdf.types.Timestamp import Timestamp
 from llpdf.types.T1Font import T1Font
 
-_xpacket_template = """\
-<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.4-c005 78.147326, 2012/08/23-13:03:03        ">
-   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-      <rdf:Description rdf:about=""
-            xmlns:xmp="http://ns.adobe.com/xap/1.0/"
-            xmlns:pdf="http://ns.adobe.com/pdf/1.3/"
-            xmlns:dc="http://purl.org/dc/elements/1.1/"
-            xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
-            xmlns:stEvt="http://ns.adobe.com/xap/1.0/sType/ResourceEvent#"
-            xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
-            xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/"
-            xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#"
-            xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#">
-         <dc:format>application/pdf</dc:format>
-		<dc:description>
-            <rdf:Alt>
-			   <rdf:li xml:lang="x-default">%(description)s</rdf:li>
-            </rdf:Alt>
-         </dc:description>
-         <dc:title>
-            <rdf:Alt>
-               <rdf:li xml:lang="x-default">%(title)s</rdf:li>
-            </rdf:Alt>
-         </dc:title>
-         <dc:creator>
-            <rdf:Seq>
-               <rdf:li>%(creator)s</rdf:li>
-            </rdf:Seq>
-         </dc:creator>
-         <xmp:CreateDate>%(create_date)s</xmp:CreateDate>
-         <xmp:CreatorTool>%(creator_tool)s</xmp:CreatorTool>
-         <xmp:ModifyDate>%(modify_date)s</xmp:ModifyDate>
-         <xmp:MetadataDate>%(metadata_date)s</xmp:MetadataDate>
-         <pdf:Keywords>%(keywords)s</pdf:Keywords>
-         <pdf:Producer>%(producer)s</pdf:Producer>
-         <xmpMM:DocumentID>uuid:%(document_uuid)s</xmpMM:DocumentID>
-         <xmpMM:InstanceID>uuid:%(instance_uuid)s</xmpMM:InstanceID>
-         <xmpMM:RenditionClass>default</xmpMM:RenditionClass>
-         <xmpMM:VersionID>1</xmpMM:VersionID>
-         <xmpMM:History>
-            <rdf:Seq>
-               <rdf:li rdf:parseType="Resource">
-                  <stEvt:action>converted</stEvt:action>
-                  <stEvt:instanceID>uuid:%(document_uuid)s</stEvt:instanceID>
-                  <stEvt:parameters>converted to PDF/A-1b</stEvt:parameters>
-                  <stEvt:softwareAgent>pdfminify</stEvt:softwareAgent>
-                  <stEvt:when>%(metadata_date)s</stEvt:when>
-               </rdf:li>
-            </rdf:Seq>
-         </xmpMM:History>
-         <pdfaid:part>1</pdfaid:part>
-         <pdfaid:conformance>B</pdfaid:conformance>
-         <pdfaExtension:schemas>
-            <rdf:Bag>
-               <rdf:li rdf:parseType="Resource">
-                  <pdfaSchema:namespaceURI>http://ns.adobe.com/pdf/1.3/</pdfaSchema:namespaceURI>
-                  <pdfaSchema:prefix>pdf</pdfaSchema:prefix>
-                  <pdfaSchema:schema>Adobe PDF Schema</pdfaSchema:schema>
-                  <pdfaSchema:property>
-                     <rdf:Seq>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>A name object indicating whether the document has been modified to include trapping information</pdfaProperty:description>
-                           <pdfaProperty:name>Trapped</pdfaProperty:name>
-                           <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-                        </rdf:li>
-                     </rdf:Seq>
-                  </pdfaSchema:property>
-               </rdf:li>
-               <rdf:li rdf:parseType="Resource">
-                  <pdfaSchema:namespaceURI>http://ns.adobe.com/xap/1.0/mm/</pdfaSchema:namespaceURI>
-                  <pdfaSchema:prefix>xmpMM</pdfaSchema:prefix>
-                  <pdfaSchema:schema>XMP Media Management Schema</pdfaSchema:schema>
-                  <pdfaSchema:property>
-                     <rdf:Seq>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>UUID based identifier for specific incarnation of a document</pdfaProperty:description>
-                           <pdfaProperty:name>InstanceID</pdfaProperty:name>
-                           <pdfaProperty:valueType>URI</pdfaProperty:valueType>
-                        </rdf:li>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>The common identifier for all versions and renditions of a document.</pdfaProperty:description>
-                           <pdfaProperty:name>OriginalDocumentID</pdfaProperty:name>
-                           <pdfaProperty:valueType>URI</pdfaProperty:valueType>
-                        </rdf:li>
-                     </rdf:Seq>
-                  </pdfaSchema:property>
-               </rdf:li>
-               <rdf:li rdf:parseType="Resource">
-                  <pdfaSchema:namespaceURI>http://www.aiim.org/pdfa/ns/id/</pdfaSchema:namespaceURI>
-                  <pdfaSchema:prefix>pdfaid</pdfaSchema:prefix>
-                  <pdfaSchema:schema>PDF/A ID Schema</pdfaSchema:schema>
-                  <pdfaSchema:property>
-                     <rdf:Seq>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>Part of PDF/A standard</pdfaProperty:description>
-                           <pdfaProperty:name>part</pdfaProperty:name>
-                           <pdfaProperty:valueType>Integer</pdfaProperty:valueType>
-                        </rdf:li>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>Amendment of PDF/A standard</pdfaProperty:description>
-                           <pdfaProperty:name>amd</pdfaProperty:name>
-                           <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-                        </rdf:li>
-                        <rdf:li rdf:parseType="Resource">
-                           <pdfaProperty:category>internal</pdfaProperty:category>
-                           <pdfaProperty:description>Conformance level of PDF/A standard</pdfaProperty:description>
-                           <pdfaProperty:name>conformance</pdfaProperty:name>
-                           <pdfaProperty:valueType>Text</pdfaProperty:valueType>
-                        </rdf:li>
-                     </rdf:Seq>
-                  </pdfaSchema:property>
-               </rdf:li>
-            </rdf:Bag>
-         </pdfaExtension:schemas>
-      </rdf:Description>
-   </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>
-"""
-
 class PDFAFilter(PDFFilter):
 	def _add_color_profile(self):
 		if self._args.color_profile is None:
@@ -221,7 +95,8 @@ class PDFAFilter(PDFFilter):
 			"instance_uuid":	str(uuid.uuid4()),
 		}
 
-		stream = (_xpacket_template % xmp_metadata).encode("utf-8")
+		xmp_metadata_template = pkgutil.get_data("llpdf.resources", "xmp_metadata.xml").decode("utf-8")
+		stream = (xmp_metadata_template % xmp_metadata).encode("utf-8")
 		content = {
 			PDFName("/Type"):			PDFName("/Metadata"),
 			PDFName("/Subtype"):		PDFName("/XML"),
