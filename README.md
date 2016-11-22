@@ -24,10 +24,18 @@ makes grammars and parsing exceptionally easy, even for people without any
 previous parsing experience. If you need parsing and use Python, TPG is *the*
 go-to solution I would recommend. Seriously, it's amazing. Check it out.
 
+In order to be able to easily create PDF/A-1b files, pdfminify also includes
+the ICC sRGB color profile "sRGB_IEC61966-2-1_black scaled.icc". It is
+distributed under its own license which is included at the bottom of this
+readme file.
+
 # License
 pdfminify is licensed under the GNU GPL v3 (except for external components as
 TPG, which has its own license). Later versions of the GPL are explicitly
 excluded.
+
+TPG (Toy Parser Generator) and the ICC sRGB color profile fall under their
+respective licenses.
 
 # Requirements
 pdfminify uses two external tools: identify and convert (both from
@@ -58,3 +66,15 @@ report it on GitHub. However due to my lack of time, I cannot promise that I
 can fix it -- to be honest, PDF is so complicated that I'm not even sure that I
 can find what the issue is. In any case, be sure to include a minimal example
 PDF that demonstrates the issue in the bug report.
+
+# ICC sRGB Color Profile License
+As taken from http://www.color.org/srgbprofiles.xalter:
+
+  To anyone who acknowledges that the file "sRGB_IEC61966-2-1_black
+  scaled.icc" is provided "AS IS" WITH NO EXPRESS OR IMPLIED WARRANTY, permission
+  to use, copy and distribute these file for any purpose is hereby granted
+  without fee, provided that the file is not changed including the ICC copyright
+  notice tag, and that the name of ICC shall not be used in advertising or
+  publicity pertaining to distribution of the software without specific, written
+  prior permission. ICC makes no representations about the suitability of this
+  software for any purpose.
