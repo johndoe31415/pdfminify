@@ -1,5 +1,7 @@
 # pdfminify
 [![Build Status](https://travis-ci.org/johndoe31415/pdfminify.svg?branch=master)](https://travis-ci.org/johndoe31415/pdfminify)
+
+
 pdfminify is intended to re-compress PDF images while operating directly at PDF
 level (i.e., no re-compression using PostScript). It parses the PDF file,
 hashes all image references, re-links resources that are duplicate (i.e., have
