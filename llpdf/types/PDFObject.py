@@ -26,6 +26,7 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.img.PDFImage import PDFImage
 from llpdf.FileRepr import StreamRepr
+from llpdf.EncodeDecode import EncodedObject,Filter, Predictor
 from .Comparable import Comparable
 
 class PDFObject(Comparable):
@@ -145,6 +146,31 @@ class PDFObject(Comparable):
 	@property
 	def stream(self):
 		return self._stream
+
+	def stream_object(self):
+		assert(self.stream is not None)
+
+		if PDFName("/Filter") in self._content:
+			filtering = {
+				PDFName("/FlateDecode"):		Filter.FlateDecode,
+				PDFName("/RunLengthDecode"):	Filter.RunLengthDecode,
+				PDFName("/CCITTFaxDecode"):		Filter.CCITTFaxDecode,
+				PDFName("/ASCIIHexDecode"):		Filter.ASCIIHexDecode,
+				PDFName("/ASCII85Decode"):		Filter.ASCII85Decode,
+			}[self._content[PDFName("/Filter")]]
+		else:
+			filtering = Filter.Uncompressed
+
+		if PDFName("/DecodeParms") in self._content:
+			predictor = Predictor(self._content[PDFName("/DecodeParms")][PDFName("/Predictor")])
+			columns = self._content[PDFName("/DecodeParms")][PDFName("/Columns")]
+		else:
+			predictor = Predictor.NoPredictor
+			columns = 1
+		return EncodedObject(compressed_data = self.stream, filtering = filtering, predictor = predictor, columns = columns)
+
+	def decoded_stream(self):
+		return self.stream_object().decode()
 
 	@property
 	def has_stream(self):

@@ -214,15 +214,15 @@ class PDFFile(object):
 				xref_offset = int(self._f.readline())
 				if self._trailer is None:
 					# Compressed XRef directory
-					with self._f.tempseek(xref_offset):
+					with self._f.tempseek(xref_offset) as marker:
+						self._log.trace("Will parse XRef stream at offset 0x%x referenced from 0x%x." % (xref_offset, marker.prev_offset))
 						xref_object = PDFObject.parse(self._f)
 						if xref_object is None:
-							raise Exception("Tried to parse XRef stream at offset 0x%x, but could not parse a valid type /XRef object there. Corrupt PDF?" % (xref_offset))
-						self._trailer = xref_object.content
-						assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
-						assert(self._trailer[PDFName("/Filter")] == PDFName("/FlateDecode"))
-						bin_xref_data = zlib.decompress(xref_object.stream)
-						self._xref_table.parse_xref_object(bin_xref_data, self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
+							self._log.error("Could not parse a valid type /XRef object at 0x%x. Corrupt PDF?" % (xref_offset))
+						else:
+							self._trailer = xref_object.content
+							assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
+							self._xref_table.parse_xref_object(xref_object.decoded_stream(), self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
 			elif line == "%%EOF":
 				self._log.debug("Hit EOF marker at 0x%x.", self._f.tell())
 				break

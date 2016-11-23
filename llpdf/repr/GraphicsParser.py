@@ -202,7 +202,7 @@ class GraphicsParser(tpg.VerboseParser):
 		token end_array '\]';
 		token float   '-?\d*\.\d+'							$ float
 		token integer   '-?\d+'								$ int
-		token pdfname_token '/[a-zA-Z][-+a-zA-Z0-9]*'		$ PDFName
+		token pdfname_token '/[^\s/<>\[\]()]*'				$ PDFName
 		token string '\(([^\)\\]+|\\[\)\(]|\\\d{3})*\)';
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
 

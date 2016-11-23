@@ -114,11 +114,10 @@ class GraphicsInterpreter(object):
 			# Draw object
 			if self._draw_callback is not None:
 				image_handle = cmd.args[0]
-				xobjects = self._page_resources.content[PDFName("/XObject")]
+				xobjects = self._page_resources[PDFName("/XObject")]
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 
-#				(width, height) = (image_obj.content[PDFName("/Width")], image_obj.content[PDFName("/Height")])
 				native_extents = self._gs["CTM"].extents([ 0, 0, 1, 1 ])
 				self._log.debug("Draw object of %s found with CTM %s; %s", image_obj, self._gs["CTM"], native_extents.format())
 

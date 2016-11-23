@@ -28,9 +28,14 @@ class _TempSeekObject(object):
 		self._offset = self._f.tell()
 		self._entered = 0
 
+	@property
+	def prev_offset(self):
+		return self._offset
+
 	def __enter__(self):
 		self._entered += 1
 		assert(self._entered == 1)
+		return self
 
 	def __exit__(self, *args):
 		self._f.seek(self._offset)
