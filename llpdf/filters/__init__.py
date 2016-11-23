@@ -30,4 +30,4 @@ from .RemoveMetadataFilter import RemoveMetadataFilter
 from .PDFAFilter import PDFAFilter
 from .DecompressFilter import DecompressFilter
 from .AnalyzeFilter import AnalyzeFilter
-from .TagFilter import TagFilter
+#from .TagFilter import TagFilter

@@ -23,7 +23,6 @@
 import collections
 from .PDFFilter import PDFFilter
 from llpdf.Exceptions import UnsupportedImageException
-from llpdf.img.PDFImage import PDFImageType
 from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
@@ -51,12 +50,9 @@ class DownscaleImageOptimization(PDFFilter):
 				image.alpha.writefile(filename, write_raw_data = self._args.raw_output)
 
 	def _rescale_image(self, image, scale_factor):
-		if (image.imgtype == PDFImageType.FlateDecode) and (self._args.jpeg_images):
-			target_type = PDFImageType.DCTDecode
-		else:
-			target_type = image.imgtype
-		self._log.debug("Resampling %s (%d bytes) to %s with scale factor %.3f", image, image.total_size, target_type.name, scale_factor)
-		reformatter = ImageReformatter(target_format = target_type, scale_factor = scale_factor, jpeg_quality = self._args.jpeg_quality, force_one_bit_alpha = self._args.one_bit_alpha)
+		lossless = not self._args.jpeg_images
+		self._log.debug("Resampling %s (%d bytes) to lossless = %s with scale factor %.3f", image, image.total_size, lossless, scale_factor)
+		reformatter = ImageReformatter(lossless = lossless, scale_factor = scale_factor, jpeg_quality = self._args.jpeg_quality, force_one_bit_alpha = self._args.one_bit_alpha)
 		resampled_image = reformatter.reformat(image)
 		return resampled_image
 

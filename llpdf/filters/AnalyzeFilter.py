@@ -20,7 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import zlib
 from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
@@ -110,7 +109,7 @@ class AnalyzeFilter(PDFFilter):
 				l1 = fontfile_obj.content[PDFName("/Length1")]
 				l2 = fontfile_obj.content[PDFName("/Length2")]
 				l3 = fontfile_obj.content[PDFName("/Length3")]
-				font = zlib.decompress(fontfile_obj.stream)
+				font = fontfile_obj.stream.decode()
 				p1 = font[ 0 : l1 ]
 				p2 = font[ l1 : l1 + l2 ]
 				with open("ff1", "wb") as f:

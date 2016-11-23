@@ -20,7 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import zlib
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
 
@@ -73,9 +72,7 @@ class T1Font(object):
 		length1 = fontfile_object.content[PDFName("/Length1")]
 		length2 = fontfile_object.content[PDFName("/Length2")]
 		length3 = fontfile_object.content[PDFName("/Length3")]
-		data = fontfile_object.stream
-		if fontfile_object.getattr(PDFName("/Filter")) == PDFName("/FlateDecode"):
-			data = zlib.decompress(data)
+		data = fontfile_object.stream.decode()
 
 		cleardata = data[ : length1]
 		cipherdata = data[length1 : length1 + length2]

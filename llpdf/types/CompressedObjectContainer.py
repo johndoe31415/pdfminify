@@ -20,10 +20,10 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import zlib
 from llpdf.types.XRefTable import CompressedXRefEntry
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
+from llpdf.EncodeDecode import EncodedObject
 
 class CompressedObjectContainer(object):
 	def __init__(self, objid):
@@ -55,15 +55,12 @@ class CompressedObjectContainer(object):
 		header = " ".join(str(value) for value in header)
 		header = header.encode("utf-8") + b"\n"
 		full_data = header + data
-		compressed_data = zlib.compress(full_data)
 		content = {
 			PDFName("/Type"):	PDFName("/ObjStm"),
 			PDFName("/N"):		self.objects_inside_count,
 			PDFName("/First"):	len(header),
-			PDFName("/Filter"):	PDFName("/FlateDecode"),
-			PDFName("/Length"):	len(compressed_data),
 		}
-		return PDFObject.create(objid = self.objid, gennum = 0, content = content, stream = compressed_data)
+		return PDFObject.create(objid = self.objid, gennum = 0, content = content, stream = EncodedObject.create(full_data))
 
 	def __str__(self):
 		return "CompressedContainer<ObjId = %d, %d objects inside: {%s}>" % (self.objid, self.objects_inside_count, ", ".join(str(obj.objid) for obj in self._contained_objects))

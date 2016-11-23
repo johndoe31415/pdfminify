@@ -55,9 +55,9 @@ class PDFWriter(object):
 		self._f.writeline("%d %d obj" % (obj.objid, obj.gennum))
 		serializer = PDFSerializer(pretty = self._pretty)
 		self._f.writeline(serializer.serialize(obj.content))
-		if obj.stream is not None:
+		if obj.has_stream:
 			self._f.writeline("stream")
-			self._f.write(obj.stream)
+			self._f.write(obj.raw_stream)
 			self._f.write(b"\n")
 			self._f.writeline("endstream")
 		self._f.writeline("endobj")

@@ -21,7 +21,6 @@
 #
 
 import re
-import zlib
 import collections
 import logging
 
@@ -86,7 +85,7 @@ class PDFFile(object):
 
 	@property
 	def stream_objects(self):
-		return [ obj for obj in self._objs.values() if (obj.stream is not None) ]
+		return [ obj for obj in self._objs.values() if obj.has_stream ]
 
 	def get_objects_that_reference(self, xref):
 		for obj in self.pattern_objects:
@@ -143,13 +142,7 @@ class PDFFile(object):
 		for page in self.pages:
 			content_xref = page.content[PDFName("/Contents")]
 			content = self.lookup(content_xref)
-			if PDFName("/Filter") not in content.content:
-				# Uncompressed page
-				pagedata = content.stream
-			elif content.content[PDFName("/Filter")] == PDFName("/FlateDecode"):
-				pagedata = zlib.decompress(content.stream)
-			else:
-				raise Exception("Do not know how to decompress page contents.")
+			pagedata = content.stream.decode()
 			pagedata = pagedata.decode("utf-8")
 			yield (page, GraphicsParser.parse(pagedata))
 
@@ -222,7 +215,7 @@ class PDFFile(object):
 						else:
 							self._trailer = xref_object.content
 							assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
-							self._xref_table.parse_xref_object(xref_object.decoded_stream(), self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
+							self._xref_table.parse_xref_object(xref_object.stream.decode(), self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
 			elif line == "%%EOF":
 				self._log.debug("Hit EOF marker at 0x%x.", self._f.tell())
 				break
@@ -244,7 +237,7 @@ class PDFFile(object):
 		if objstrm_obj.content[PDFName("/Filter")] != PDFName("/FlateDecode"):
 			self._log.warn("Cannot unpack object stream %s with unknown filter %s.", objstrm_obj, objstrm_obj.content[PDFName("/Filter")])
 			return
-		data = zlib.decompress(objstrm_obj.stream)
+		data = objstrm_obj.stream.decode()
 		objcnt = objstrm_obj.content[PDFName("/N")]
 		first = objstrm_obj.content[PDFName("/First")]
 		self._log.debug("Object stream %s contains %d objects starting at offset %d.", objstrm_obj, objcnt, first)

@@ -20,14 +20,15 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import zlib
 from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 
 class DecompressFilter(PDFFilter):
 	def run(self):
 		for obj in self._pdf:
-			if obj.has_stream and (PDFName("/Filter") in obj.content) and (obj.content[PDFName("/Filter")] == PDFName("/FlateDecode")):
-				del obj.content[PDFName("/Filter")]
-				obj.set_stream(zlib.decompress(obj.stream))
-				obj.content[PDFName("/Length")] = len(obj.stream)
+			TODO_ABORT
+#			if obj.has_stream and (PDFName("/Filter") in obj.content) and (obj.content[PDFName("/Filter")] == PDFName("/FlateDecode")):
+#				del obj.content[PDFName("/Filter")]
+#				del obj.content[PDFName("/Filter")]
+#				obj.set_stream(zlib.decompress(obj.stream))
+#				obj.content[PDFName("/Length")] = len(obj.stream)

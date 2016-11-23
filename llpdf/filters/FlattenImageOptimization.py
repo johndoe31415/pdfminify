@@ -22,14 +22,13 @@
 
 import collections
 from .PDFFilter import PDFFilter
-from llpdf.img.PDFImage import PDFImageType
 from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
 
 class FlattenImageOptimization(PDFFilter):
 	def run(self):
-		reformatter = ImageReformatter(target_format = PDFImageType.FlateDecode, scale_factor = 1)
+		reformatter = ImageReformatter(lossless = True, scale_factor = 1)
 		for image_obj in self._pdf.image_objects:
 			if PDFName("/SMask") in image_obj.content:
 				current_image = self._pdf.get_image(image_obj.xref)

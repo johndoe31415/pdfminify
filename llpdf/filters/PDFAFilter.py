@@ -21,7 +21,6 @@
 #
 
 import os
-import zlib
 import uuid
 import pkgutil
 
@@ -31,6 +30,7 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.Timestamp import Timestamp
 from llpdf.types.T1Font import T1Font
+from llpdf.EncodeDecode import EncodedObject
 
 class PDFAFilter(PDFFilter):
 	def _add_color_profile(self):
@@ -40,15 +40,12 @@ class PDFAFilter(PDFFilter):
 			with open(self._args.color_profile, "rb") as f:
 				profile_data = f.read()
 
-		stream = zlib.compress(profile_data)
 		content = {
-			PDFName("/Filter"):		PDFName("/FlateDecode"),
 			PDFName("/N"):			3,
 			PDFName("/Range"):		[ 0, 1, 0, 1, 0, 1 ],
-			PDFName("/Length"):		len(stream),
 		}
 		objid = self._pdf.get_free_objid()
-		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = stream)
+		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = EncodedObject.create(profile_data))
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
@@ -63,7 +60,7 @@ class PDFAFilter(PDFFilter):
 			PDFName("/S"):							PDFName("/GTS_PDFA1"),
 		} ]
 		objid = self._pdf.get_free_objid()
-		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = None)
+		pdf_object = PDFObject.create(objid, gennum = 0, content = content)
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
@@ -94,10 +91,9 @@ class PDFAFilter(PDFFilter):
 		content = {
 			PDFName("/Type"):			PDFName("/Metadata"),
 			PDFName("/Subtype"):		PDFName("/XML"),
-			PDFName("/Length"):			len(stream),
 		}
 		objid = self._pdf.get_free_objid()
-		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = stream)
+		pdf_object = PDFObject.create(objid, gennum = 0, content = content, stream = EncodedObject.create(stream, compress = False))
 		self._pdf.replace_object(pdf_object)
 		return pdf_object.xref
 
@@ -184,11 +180,8 @@ class PDFAFilter(PDFFilter):
 						self._log.debug("Assuming CIDSet for %d glyphs of %d full 0xff bytes and a final value of 0x%x.", glyph_count, full_bytes, last_byte)
 
 						cidset_objid = self._pdf.get_free_objid()
-						stream = zlib.compress((bytes([ 0xff ]) * full_bytes) + bytes([ last_byte ]))
-						pdf_object = PDFObject.create(cidset_objid, gennum = 0, content = {
-							PDFName("/Length"):		len(stream),
-							PDFName("/Filter"):		PDFName("/FlateDecode"),
-						}, stream = stream)
+						stream = (bytes([ 0xff ]) * full_bytes) + bytes([ last_byte ])
+						pdf_object = PDFObject.create(cidset_objid, gennum = 0, content = { }, stream = EncodedObject.create(stream))
 						self._pdf.replace_object(pdf_object)
 
 						font_descriptor_obj.content[PDFName("/CIDSet")] = pdf_object.xref

@@ -23,34 +23,27 @@
 import time
 import hashlib
 import re
-import zlib
 import enum
 import subprocess
 from tempfile import NamedTemporaryFile
 from .PnmPicture import PnmPictureFormat, PnmPicture
 from llpdf.types.PDFName import PDFName
 from llpdf.Exceptions import UnsupportedImageException
-
-class PDFImageType(enum.IntEnum):
-	FlateDecode = 1
-	DCTDecode = 2
-	RunLengthDecode = 3
+from llpdf.EncodeDecode import Filter
 
 class PDFImageColorSpace(enum.IntEnum):
 	DeviceRGB = 1
 	DeviceGray = 2
 
 class PDFImage(object):
-	def __init__(self, width, height, colorspace, bits_per_component, imgdata, imgtype, inverted):
+	def __init__(self, width, height, colorspace, bits_per_component, imgdata, inverted):
 		self._width = width
 		self._height = height
 		self._colorspace = colorspace
 		self._bits_per_component = bits_per_component
 		self._imgdata = imgdata
-		self._imgtype = imgtype
 		self._inverted = inverted
 		self._alpha = None
-		assert(isinstance(self._imgtype, PDFImageType))
 
 	def set_alpha(self, alpha_image):
 		assert(self.width == alpha_image.width)
@@ -78,13 +71,6 @@ class PDFImage(object):
 			if len(filter_info) != 1:
 				raise UnsupportedImageException("Multi-filter application is unsupported as of now: %s." % (filter_info))
 			filter_info = filter_info[0]
-		imgtype = {
-			PDFName("/FlateDecode"):		PDFImageType.FlateDecode,
-			PDFName("/DCTDecode"):			PDFImageType.DCTDecode,
-			PDFName("/RunLengthDecode"):	PDFImageType.RunLengthDecode,
-		}.get(filter_info)
-		if imgtype is None:
-			raise UnsupportedImageException("Cannot create image from unknown type '%s'." % (filter_info))
 		if isinstance(colorspace_info, list):
 			raise UnsupportedImageException("Indexed images are currently unsupported: %s" % (colorspace_info))
 		colorspace = {
@@ -93,7 +79,7 @@ class PDFImage(object):
 		}.get(colorspace_info)
 		if colorspace is None:
 			raise UnsupportedImageException("Unsupported image color space '%s'." % (colorspace_info))
-		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, imgtype = imgtype, inverted = inverted)
+		return cls(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = xobj.stream, inverted = inverted)
 
 	@classmethod
 	def create_from_object(cls, xobj, alpha_xobj = None):
@@ -114,10 +100,6 @@ class PDFImage(object):
 	@property
 	def imgdata(self):
 		return self._imgdata
-
-	@property
-	def imgtype(self):
-		return self._imgtype
 
 	@property
 	def colorspace(self):
@@ -144,56 +126,30 @@ class PDFImage(object):
 
 	@property
 	def extension(self):
-		return self.extension_for_imgtype(self.imgtype)
+		return self.extension_for_filter(self.imgdata.filtering)
 
 	@property
 	def raw_extension(self):
-		return self.raw_extension_for_imgtype(self.imgtype)
+		return self.raw_extension_for_filter(self.imgdata.filtering)
 
 	@classmethod
-	def extension_for_imgtype(cls, imgtype):
+	def extension_for_filter(cls, filtering):
 		return {
-			PDFImageType.FlateDecode:		"pnm",
-			PDFImageType.RunLengthDecode:	"pnm",
-			PDFImageType.DCTDecode:			"jpg",
-		}[imgtype]
+			Filter.FlateDecode:		"pnm",
+			Filter.RunLengthDecode:	"pnm",
+			Filter.DCTDecode:		"jpg",
+		}[filtering]
 
 	@classmethod
-	def raw_extension_for_imgtype(cls, imgtype):
+	def raw_extension_for_filter(cls, filtering):
 		return {
-			PDFImageType.FlateDecode:		"z",
-			PDFImageType.RunLengthDecode:	"rle",
-			PDFImageType.DCTDecode:			"jpg",
-		}[imgtype]
-
-	@staticmethod
-	def _rle_decode(rle_data):
-		result = bytearray()
-		index = 0
-		while index < len(rle_data):
-			length = rle_data[index]
-			index += 1
-			if 0 <= length <= 127:
-				bytecnt = 1 + length
-				result += rle_data[index : index + bytecnt]
-				index += bytecnt
-			elif length == 128:
-				# EOD
-				break
-			else:
-				bytecnt = 257 - length
-				value = rle_data[index]
-				result += bytecnt * bytes([ value ])
-				index += 1
-		return result
+			Filter.FlateDecode:		"z",
+			Filter.RunLengthDecode:	"rle",
+			Filter.DCTDecode:		"jpg",
+		}[filtering]
 
 	def get_pixeldata(self):
-		if self.imgtype == PDFImageType.FlateDecode:
-			return zlib.decompress(self._imgdata)
-		elif self.imgtype == PDFImageType.RunLengthDecode:
-			return self._rle_decode(self._imgdata)
-		else:
-			raise Exception(NotImplemented)
+		return self._imgdata.decode()
 
 	def pixel_hash(self):
 		return hashlib.md5(self.get_pixeldata()).hexdigest()
@@ -223,7 +179,7 @@ class PDFImage(object):
 		return (int(result["width"]), int(result["height"]))
 
 	def writefile(self, filename, write_raw_data = False):
-		if (self.imgtype in [ PDFImageType.FlateDecode, PDFImageType.RunLengthDecode ]) and (not write_raw_data):
+		if self.imgdata.lossless and (not write_raw_data):
 			pnm_image = self.get_pnm()
 			pnm_image.write_file(filename)
 		else:
@@ -234,7 +190,7 @@ class PDFImage(object):
 		return len(self._imgdata)
 
 	def _raw_str(self):
-		return "%sImg<%d x %d, %s-%d>" % (self.imgtype.name, self.width, self.height, self.colorspace.name, self.bits_per_component)
+		return "Img<%d x %d, %s-%d, %s>" % (self.width, self.height, self.colorspace.name, self.bits_per_component, self.imgdata.filtering.name)
 
 	def __str__(self):
 		if self.alpha is None:

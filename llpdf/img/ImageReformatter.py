@@ -22,17 +22,18 @@
 
 import time
 import subprocess
-import zlib
 import logging
 from tempfile import NamedTemporaryFile
-from llpdf.img.PDFImage import PDFImage, PDFImageType, PDFImageColorSpace
+from llpdf.img.PDFImage import PDFImage, PDFImageColorSpace
 from llpdf.img.PnmPicture import PnmPicture, PnmPictureFormat
+from llpdf.EncodeDecode import EncodedObject, Filter
 
 class ImageReformatter(object):
 	_log = logging.getLogger("llpdf.img.ImageReformatter")
 
-	def __init__(self, target_format, scale_factor = 1, jpeg_quality = 85, force_one_bit_alpha = False):
-		self._target_format = target_format
+	def __init__(self, lossless, scale_factor = 1, jpeg_quality = 85, force_one_bit_alpha = False):
+		assert(isinstance(lossless, bool))
+		self._lossless = lossless
 		self._scale_factor = scale_factor
 		self._jpeg_quality = jpeg_quality
 		self._force_one_bit_alpha = force_one_bit_alpha
@@ -48,13 +49,13 @@ class ImageReformatter(object):
 		return (width, height, colorspace, depth)
 
 	@classmethod
-	def _encode_image(cls, image_filename, image_format):
-		if image_format == PDFImageType.FlateDecode:
+	def _encode_image(cls, image_filename, lossless):
+		if lossless:
 			img = PnmPicture.read_file(image_filename)
 			if img.img_format == PnmPictureFormat.Bitmap:
 				# PDFs use exactly inverted syntax for 1-bit images
 				img.invert()
-			imgdata = zlib.compress(img.data)
+			imgdata = EncodedObject.create(img.data)
 			(colorspace, bits_per_component) = {
 				PnmPictureFormat.Bitmap:		(PDFImageColorSpace.DeviceGray, 1),
 				PnmPictureFormat.Graymap:		(PDFImageColorSpace.DeviceGray, 8),
@@ -62,30 +63,27 @@ class ImageReformatter(object):
 			}[img.img_format]
 			width = img.width
 			height = img.height
-		elif image_format == PDFImageType.RunLengthDecode:
-			raise Exception("Encoding in RLE not supported.")
 		else:
 			with open(image_filename, "rb") as f:
-				imgdata = f.read()
+				imgdata = EncodedObject(encoded_data = f.read(), filtering = Filter.DCTDecode)
 			(width, height, colorspace, bits_per_component) = cls._get_image_geometry(image_filename)
 			colorspace = {
 					"Gray":	PDFImageColorSpace.DeviceGray,
 					"sRGB":	PDFImageColorSpace.DeviceRGB,
 			}[colorspace]
+		return PDFImage(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = imgdata, inverted = False)
 
-		return PDFImage(width = width, height = height, colorspace = colorspace, bits_per_component = bits_per_component, imgdata = imgdata, imgtype = image_format, inverted = False)
 
-
-	def _reformat_channel(self, image, target_format, grayscale = False):
-		target_extension = PDFImage.extension_for_imgtype(target_format)
-		with NamedTemporaryFile(prefix = "src_img_", suffix = "." + image.extension) as src_img_file, NamedTemporaryFile(prefix = "result_img_", suffix = "." + target_extension) as dst_img_file:
+	def _reformat_channel(self, image, lossless, grayscale = False):
+		target_extension = ".pnm" if lossless else ".jpg"
+		with NamedTemporaryFile(prefix = "src_img_", suffix = "." + image.extension) as src_img_file, NamedTemporaryFile(prefix = "result_img_", suffix = target_extension) as dst_img_file:
 			image.writefile(src_img_file.name)
 
 			conversion_cmd = [ "convert" ]
 			if self._scale_factor != 1:
 				conversion_cmd += [ "-scale", "%f%%" % (self._scale_factor * 100) ]
 
-			if target_format == PDFImageType.DCTDecode:
+			if not lossless:
 				conversion_cmd += [ "-quality", str(self._jpeg_quality) ]
 
 			if grayscale:
@@ -104,21 +102,19 @@ class ImageReformatter(object):
 			self._log.debug("Running command: %s", " ".join(conversion_cmd))
 			subprocess.check_call(conversion_cmd)
 
-			return self._encode_image(dst_img_file.name, target_format)
+			return self._encode_image(dst_img_file.name, lossless)
 
 	def reformat(self, image):
-		if (image.imgtype == self._target_format) and (self._scale_factor == 1):
+		if (image.imgdata.lossless == self._lossless) and (self._scale_factor == 1):
 			return image
 
 		# Rescale raw image first
-		target_format = image.imgtype
-		if (target_format != PDFImageType.DCTDecode) and (self._target_format == PDFImageType.DCTDecode):
-			target_format = self._target_format
-		reformatted_image = self._reformat_channel(image, target_format)
+		lossless = image.imgdata.lossless and (not self._lossless)
+		reformatted_image = self._reformat_channel(image, lossless)
 
 		# Then rescale alpha channel as well
 		if image.alpha:
-			reformatted_alpha = self._reformat_channel(image.alpha, PDFImageType.FlateDecode, grayscale = True)
+			reformatted_alpha = self._reformat_channel(image.alpha, lossless = True, grayscale = True)
 			reformatted_image.set_alpha(reformatted_alpha)
 
 		return reformatted_image
@@ -147,5 +143,5 @@ class ImageReformatter(object):
 			conversion_cmd += [ dst_img_file.name ]
 			subprocess.check_call(conversion_cmd)
 
-			flattened_image = self._encode_image(dst_img_file.name, PDFImageType.FlateDecode)
+			flattened_image = self._encode_image(dst_img_file.name, lossless = True)
 		return flattened_image

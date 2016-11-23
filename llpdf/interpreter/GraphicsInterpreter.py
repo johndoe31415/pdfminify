@@ -24,6 +24,7 @@ import logging
 import collections
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
+from llpdf.types.PDFObject import PDFObject
 from llpdf.types.TransformationMatrix import TransformationMatrix
 from llpdf.Measurements import Measurements
 
@@ -114,7 +115,11 @@ class GraphicsInterpreter(object):
 			# Draw object
 			if self._draw_callback is not None:
 				image_handle = cmd.args[0]
-				xobjects = self._page_resources[PDFName("/XObject")]
+				if isinstance(self._page_resources, PDFObject):
+					resources = self._page_resources.content
+				else:
+					resources = self._page_resources
+				xobjects = resources[PDFName("/XObject")]
 				image_xref = xobjects[image_handle]
 				image_obj = self._pdf_lookup.lookup(image_xref)
 

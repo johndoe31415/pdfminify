@@ -20,11 +20,11 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import zlib
 import enum
 import logging
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
+from llpdf.EncodeDecode import EncodedObject
 
 class XRefTableEntryType(enum.IntEnum):
 	FreeObject = 0
@@ -254,12 +254,9 @@ class XRefTable(object):
 			PDFName("/Index"):	[ 0, self._max_objid + 1 ],
 			PDFName("/Size"):	self._max_objid + 1,
 			PDFName("/W"):		[ 1, offset_width, 1 ],
-			PDFName("/Filter"):	PDFName("/FlateDecode"),
 		})
 		data = self._serialize_xref_data(offset_width)
-		stream = zlib.compress(data)
-		content[PDFName("/Length")] = len(stream)
-		return PDFObject.create(objid = objid, gennum = 0, content = content, stream = stream)
+		return PDFObject.create(objid = objid, gennum = 0, content = content, stream = EncodedObject.create(data))
 
 	def __iter__(self):
 		return iter(self._content.items())

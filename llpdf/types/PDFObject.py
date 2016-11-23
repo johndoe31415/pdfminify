@@ -26,7 +26,7 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.img.PDFImage import PDFImage
 from llpdf.FileRepr import StreamRepr
-from llpdf.EncodeDecode import EncodedObject,Filter, Predictor
+from llpdf.EncodeDecode import EncodedObject
 from .Comparable import Comparable
 
 class PDFObject(Comparable):
@@ -70,21 +70,28 @@ class PDFObject(Comparable):
 	def set_content(self, content):
 		self._content = content
 
-	def set_stream(self, stream):
-		self._stream = stream
+	def set_raw_stream(self, raw_stream):
+		assert((raw_stream is None) or isinstance(raw_stream, bytes))
+		self._stream = raw_stream
 
 	def replace_by(self, pdfobj):
 		self.set_content(pdfobj.content)
-		self.set_stream(pdfobj.stream)
+		self.set_stream(pdfobj.raw_stream)
 
 	def truncate(self, stream_length):
 		self._stream = self._stream[ : stream_length]
 
 	@classmethod
-	def create(cls, objid, gennum, content, stream):
+	def create(cls, objid, gennum, content, stream = None):
+		assert((stream is None) or isinstance(stream, EncodedObject))
 		result = cls(objid, gennum, rawdata = None)
+		if stream is not None:
+			stream.update_meta_dict(content)
+			raw_stream = stream.encoded_data
+		else:
+			raw_stream = None
 		result.set_content(content)
-		result.set_stream(stream)
+		result.set_raw_stream(raw_stream)
 		return result
 
 	@classmethod
@@ -92,17 +99,15 @@ class PDFObject(Comparable):
 		content = {
 			PDFName("/Type"):				PDFName("/XObject"),
 			PDFName("/Subtype"):			PDFName("/Image"),
-			PDFName("/Filter"):				PDFName("/" + img.imgtype.name),
 			PDFName("/Width"):				img.width,
 			PDFName("/Height"):				img.height,
 			PDFName("/BitsPerComponent"):	img.bits_per_component,
 			PDFName("/ColorSpace"):			PDFName("/" + img.colorspace.name),
-			PDFName("/Length"):				len(img),
 			PDFName("/Interpolate"):		True,
 		}
 		if alpha_xref is not None:
 			content[PDFName("/SMask")] = alpha_xref
-		return cls.create(objid, gennum, content, img.imgdata)
+		return cls.create(objid, gennum, content, stream = img.imgdata)
 
 	@property
 	def xref(self):
@@ -144,37 +149,17 @@ class PDFObject(Comparable):
 		return self._content
 
 	@property
-	def stream(self):
+	def raw_stream(self):
 		return self._stream
 
-	def stream_object(self):
-		assert(self.stream is not None)
-
-		if PDFName("/Filter") in self._content:
-			filtering = {
-				PDFName("/FlateDecode"):		Filter.FlateDecode,
-				PDFName("/RunLengthDecode"):	Filter.RunLengthDecode,
-				PDFName("/CCITTFaxDecode"):		Filter.CCITTFaxDecode,
-				PDFName("/ASCIIHexDecode"):		Filter.ASCIIHexDecode,
-				PDFName("/ASCII85Decode"):		Filter.ASCII85Decode,
-			}[self._content[PDFName("/Filter")]]
-		else:
-			filtering = Filter.Uncompressed
-
-		if PDFName("/DecodeParms") in self._content:
-			predictor = Predictor(self._content[PDFName("/DecodeParms")][PDFName("/Predictor")])
-			columns = self._content[PDFName("/DecodeParms")][PDFName("/Columns")]
-		else:
-			predictor = Predictor.NoPredictor
-			columns = 1
-		return EncodedObject(compressed_data = self.stream, filtering = filtering, predictor = predictor, columns = columns)
-
-	def decoded_stream(self):
-		return self.stream_object().decode()
+	@property
+	def stream(self):
+		assert(self.has_stream)
+		return EncodedObject.from_object(self)
 
 	@property
 	def has_stream(self):
-		return self.stream is not None
+		return self.raw_stream is not None
 
 	@property
 	def is_objstrm(self):
@@ -194,7 +179,7 @@ class PDFObject(Comparable):
 		return self.content.get(key)
 
 	def __len__(self):
-		return 0 if (not self.has_stream) else len(self.stream)
+		return 0 if (not self.has_stream) else len(self.raw_stream)
 
 	def __str__(self):
 		return "PDFObject<ID=%d, gen=%d, %d bytes>" % (self.objid, self.gennum, len(self))
