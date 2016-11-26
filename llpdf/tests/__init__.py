@@ -20,4 +20,34 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-from .PDFParserTest import PDFParserTest
+import os
+import importlib
+import unittest
+
+def _get_test_module_names(test_module_path):
+	for filename in os.listdir(test_module_path):
+		full_filename = test_module_path + "/" + filename
+		if filename.startswith("_") or filename.startswith("."):
+			continue
+		if not filename.endswith(".py"):
+			continue
+		if not os.path.isfile(full_filename):
+			continue
+		module_base = filename[:-3]
+		module_name = "llpdf.tests." + module_base
+		yield module_name
+	
+def _get_test_modules(test_module_path):
+	for module_name in _get_test_module_names(test_module_path):
+		yield importlib.import_module(module_name)
+
+def run():
+	tcloader = unittest.TestLoader()
+	suite = unittest.TestSuite()
+
+	test_module_path = os.path.dirname(__file__)
+	for test_module in _get_test_modules(test_module_path):
+		new_tests = tcloader.loadTestsFromModule(test_module)
+		suite.addTests(new_tests)
+
+	unittest.TextTestRunner(verbosity = 1).run(suite)

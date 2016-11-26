@@ -2,4 +2,4 @@ language: python
 python:
   - 3.5
 
-script: python3 -m unittest llpdf.tests
+script: python3 -m llpdf.tests
