@@ -33,7 +33,7 @@ class Measurements(object):
 		"inch":		_UnitDefinition(name = "inch", factor = 25.4, format = "%.2f", abbreviation = "\""),
 	}
 	_DEFAULT_UNIT = "native"
-	
+
 	@classmethod
 	def convert(cls, value, from_unit, to_unit):
 		from_scalar = cls._UNITS[from_unit].factor

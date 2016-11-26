@@ -42,7 +42,7 @@ class DeleteOrphanedObjectsFilter(PDFFilter):
 			all_objects.add(obj.xref)
 			self._traverse(obj.content)
 		self._traverse(self._pdf.trailer)
-		
+
 		unused_objects = all_objects - self._referenced_objects
 		self._log.debug("%d objects total, %d referenced (i.e., %d objects unused): %s", len(all_objects), len(self._referenced_objects), len(unused_objects), unused_objects)
 		for obj_xref in unused_objects:
