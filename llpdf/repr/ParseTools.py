@@ -35,6 +35,7 @@ def interpret_escape_char(text):
 	result = {
 		r"\r":		b"\r",
 		r"\n":		b"\n",
+		r"\t":		b"\t",
 		r"\(":		b"(",
 		r"\)":		b")",
 		r"\\":		b"\\",
