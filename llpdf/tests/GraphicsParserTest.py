@@ -26,8 +26,19 @@ from llpdf.repr.GraphicsParser import GraphCommand
 from llpdf.types.PDFName import PDFName
 
 class GraphicsParserTest(unittest.TestCase):
+	def test_command_equality(self):
+		self.assertEqual(GraphCommand("q"), GraphCommand("q"))
+		self.assertNotEqual(GraphCommand("q", 0), GraphCommand("q"))
+		self.assertNotEqual(GraphCommand("q"), GraphCommand("Q"))
+		self.assertEqual(GraphCommand("q", 9, 3, 2.44), GraphCommand("q", 9, 3, 2.44))
+
 	def test_simple_commands(self):
 		self.assertEqual(GraphicsParser.parse("q"), [ GraphCommand("q") ])
 		self.assertNotEqual(GraphicsParser.parse("q"), [ GraphCommand("Q") ])
-
 		self.assertEqual(GraphicsParser.parse("q Q"), [ GraphCommand("q"), GraphCommand("Q") ])
+		self.assertEqual(GraphicsParser.parse("q\n\n\t \n\n\nq\n\n"), [ GraphCommand("q"), GraphCommand("q") ])
+		self.assertEqual(GraphicsParser.parse("1\n2\t3 4 5 6\n\ncm"), [ GraphCommand("cm", 1, 2, 3, 4, 5, 6) ])
+
+	def test_array_arg(self):
+		self.assertEqual(GraphicsParser.parse("<</Foo /Bar>>TJ"), [ GraphCommand("TJ", { PDFName("/Foo"): PDFName("/Bar") }) ])
+		#self.assertEqual(GraphicsParser.parse("[(some in-depth )3(things\).)]TJ"), [ GraphCommand("TJ", [ "(some in-depth )", 3, "(things).)" ]), ])
