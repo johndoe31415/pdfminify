@@ -36,7 +36,7 @@ def _get_test_module_names(test_module_path):
 		module_base = filename[:-3]
 		module_name = "llpdf.tests." + module_base
 		yield module_name
-	
+
 def _get_test_modules(test_module_path):
 	for module_name in _get_test_module_names(test_module_path):
 		yield importlib.import_module(module_name)
@@ -50,4 +50,5 @@ def run():
 		new_tests = tcloader.loadTestsFromModule(test_module)
 		suite.addTests(new_tests)
 
-	unittest.TextTestRunner(verbosity = 1).run(suite)
+	test_result = unittest.TextTestRunner(verbosity = 1).run(suite)
+	return test_result.wasSuccessful()
