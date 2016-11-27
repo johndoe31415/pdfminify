@@ -183,6 +183,12 @@ class GraphCommand(object):
 	def args(self):
 		return self._args
 
+	def __eq__(self, other):
+		return (self.command, self.args) == (other.command, other.args)
+
+	def __neq__(self, other):
+		return not (self == other)
+
 	def __repr__(self):
 		return str(self)
 

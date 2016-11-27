@@ -26,6 +26,7 @@ import os
 import logging
 import argparse
 import llpdf
+import llpdf.tests
 from FriendlyArgumentParser import FriendlyArgumentParser
 from FilesizeFormatter import FilesizeFormatter
 
@@ -34,6 +35,10 @@ min_python_version = (3, 5, 0)
 if python_version < min_python_version:
 	print("Error: You need at least Python %s to run pdfminify, but you're using Python %s." % ( ".".join(str(x) for x in min_python_version), ".".join(str(x) for x in python_version)), file = sys.stderr)
 	sys.exit(1)
+
+if (len(sys.argv) >= 2) and (sys.argv[1] == "--test"):
+	llpdf.tests.run()
+	sys.exit(0)
 
 def _cropbox(text):
 	text = text.split(",")
