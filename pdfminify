@@ -37,10 +37,7 @@ if python_version < min_python_version:
 	sys.exit(1)
 
 if (len(sys.argv) >= 2) and (sys.argv[1] == "--test"):
-	if not llpdf.tests.run():
-		sys.exit(1)
-	else:
-		sys.exit(0)
+	llpdf.tests.run(terminate_after = True)
 
 def _cropbox(text):
 	text = text.split(",")

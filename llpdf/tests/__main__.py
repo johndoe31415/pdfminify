@@ -22,4 +22,4 @@
 
 import llpdf.tests
 
-llpdf.tests.run()
+llpdf.tests.run(terminate_after = True)

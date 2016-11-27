@@ -21,6 +21,7 @@
 #
 
 import os
+import sys
 import importlib
 import unittest
 
@@ -41,7 +42,7 @@ def _get_test_modules(test_module_path):
 	for module_name in _get_test_module_names(test_module_path):
 		yield importlib.import_module(module_name)
 
-def run():
+def run(terminate_after = False):
 	tcloader = unittest.TestLoader()
 	suite = unittest.TestSuite()
 
@@ -51,4 +52,7 @@ def run():
 		suite.addTests(new_tests)
 
 	test_result = unittest.TextTestRunner(verbosity = 1).run(suite)
-	return test_result.wasSuccessful()
+	test_success = test_result.wasSuccessful()
+	if terminate_after:
+		sys.exit(0 if test_success else 1)
+	return test_success
