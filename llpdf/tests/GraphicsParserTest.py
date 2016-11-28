@@ -41,4 +41,78 @@ class GraphicsParserTest(unittest.TestCase):
 
 	def test_array_arg(self):
 		self.assertEqual(GraphicsParser.parse("<</Foo /Bar>>TJ"), [ GraphCommand("TJ", { PDFName("/Foo"): PDFName("/Bar") }) ])
-		#self.assertEqual(GraphicsParser.parse("[(some in-depth )3(things\).)]TJ"), [ GraphCommand("TJ", [ "(some in-depth )", 3, "(things).)" ]), ])
+		self.assertEqual(GraphicsParser.parse("[(some in-depth )3(things\).)]TJ"), [ GraphCommand("TJ", [ "(some in-depth )", 3, "(things\).)" ])])
+
+	def test_real_pdf_data(self):
+		result = GraphicsParser.parse("""
+		q
+		Q q
+		79 841.89 516 -763 re W n
+		1 1 1 rg /a0 gs
+		79 1055.499 579.5 -976.5 re f
+		0.666656 0.666656 0.666656 RG 1 w
+		0 J
+		0 j
+		[ 1 1] 0.5 d
+		10 M q 0 1 -1 0 0 841.889764 cm
+		102.609 -79.5 -865 -485 re S Q
+		Q q
+		79.5 841.89 484.727 -762.391 re W n
+		q
+		0 866.230684 -486.499608 0 565.332662 78.832642 cm
+		/a0 gs /x5 Do
+		Q
+		1 1 1 rg /a0 gs
+		BT
+		0 66 -66 0 167.850006 107.849998 Tm
+		/f-0-0 1 Tf
+		[(FOO)3(BARY )3(BARFOO)3(BA)]TJ
+		0 -1.121212 Td
+		[(MOO KO)20(KOO)21(LOLS)3(KIX)]TJ
+		ET
+		Q
+		""")
+		self.assertEqual(result, [
+			GraphCommand("q"),
+			GraphCommand("Q"),
+			GraphCommand("q"),
+			GraphCommand("re", 79, 841.89, 516, -763),
+			GraphCommand("W"),
+			GraphCommand("n"),
+			GraphCommand("rg", 1, 1, 1),
+			GraphCommand("gs", PDFName("/a0")),
+			GraphCommand("re", 79, 1055.499, 579.5, -976.5),
+			GraphCommand("f"),
+			GraphCommand("RG", 0.666656, 0.666656, 0.666656),
+			GraphCommand("w", 1),
+			GraphCommand("J", 0),
+			GraphCommand("j", 0),
+			GraphCommand("d", [ 1, 1 ], 0.5),
+			GraphCommand("M", 10),
+			GraphCommand("q"),
+			GraphCommand("cm", 0, 1, -1, 0, 0, 841.889764),
+			GraphCommand("re", 102.609, -79.5, -865, -485),
+			GraphCommand("S"),
+			GraphCommand("Q"),
+			GraphCommand("Q"),
+			GraphCommand("q"),
+			GraphCommand("re", 79.5, 841.89, 484.727, -762.391),
+			GraphCommand("W"),
+			GraphCommand("n"),
+			GraphCommand("q"),
+			GraphCommand("cm", 0, 866.230684, -486.499608, 0, 565.332662, 78.832642),
+			GraphCommand("gs", PDFName("/a0")),
+			GraphCommand("Do", PDFName("/x5")),
+			GraphCommand("Q"),
+			GraphCommand("rg", 1, 1, 1),
+			GraphCommand("gs", PDFName("/a0")),
+			GraphCommand("BT"),
+			GraphCommand("Tm", 0, 66, -66, 0, 167.850006, 107.849998),
+			GraphCommand("Tf", PDFName("/f-0-0"), 1),
+			GraphCommand("TJ", [ "(FOO)", 3, "(BARY )", 3, "(BARFOO)", 3, "(BA)" ]),
+			GraphCommand("Td", 0, -1.121212),
+			GraphCommand("TJ", [ "(MOO KO)", 20, "(KOO)", 21, "(LOLS)", 3, "(KIX)" ]),
+			GraphCommand("ET"),
+			GraphCommand("Q"),
+		])
+

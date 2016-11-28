@@ -286,37 +286,8 @@ def parse(text):
 
 if __name__ == "__main__":
 	examples = [
-		"[(some in-depth )3(things\).)]TJ",
 		"q q q",
 		"q q q Q 1 2 3 4 5 6 cm",
-"""
-q
-Q q
-79 841.89 516 -763 re W n
-1 1 1 rg /a0 gs
-79 1055.499 579.5 -976.5 re f
-0.666656 0.666656 0.666656 RG 1 w
-0 J
-0 j
-[ 1 1] 0.5 d
-10 M q 0 1 -1 0 0 841.889764 cm
-102.609 -79.5 -865 -485 re S Q
-Q q
-79.5 841.89 484.727 -762.391 re W n
-q
-0 866.230684 -486.499608 0 565.332662 78.832642 cm
-/a0 gs /x5 Do
-Q
-1 1 1 rg /a0 gs
-BT
-0 66 -66 0 167.850006 107.849998 Tm
-/f-0-0 1 Tf
-[(FOO)3(BARY )3(BARFOO)3(BA)]TJ
-0 -1.121212 Td
-[(MOO KO)20(KOO)21(LOLS)3(KIX)]TJ
-ET
-Q
-""",
 		"/P <</MCID 0 >>BDC",
 	]
 
