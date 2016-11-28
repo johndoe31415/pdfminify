@@ -34,6 +34,7 @@ class Filter(enum.IntEnum):
 	ASCII85Decode = 6
 
 class PNGPredictor(enum.IntEnum):
+	No = 0
 	Sub = 1
 	Up = 2
 	Average = 3
@@ -48,7 +49,6 @@ class Predictor(enum.IntEnum):
 	PNGPredictionAverage = 13
 	PNGPredictionPaeth = 14
 	PNGPredictionOptimum = 15
-
 
 class EncodedObject(object):
 	_FILTER_MAP = {
@@ -143,7 +143,7 @@ class EncodedObject(object):
 	def _depredict(self, deencoded_data):
 		if self.predictor == Predictor.NoPredictor:
 			return deencoded_data
-		elif self.predictor == Predictor.PNGPredictionUp:
+		else:
 			result = bytearray()
 			previous_scanline = bytes(self.columns)
 			for i in range(0, len(deencoded_data), self.columns + 1):
@@ -151,26 +151,55 @@ class EncodedObject(object):
 				scanline = deencoded_data[i + 1 : i + self.columns + 1]
 				if png_filter == PNGPredictor.Up:
 					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(previous_scanline, scanline))
+				elif png_filter == PNGPredictor.Sub:
+					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(scanline, scanline[1:]))
 				else:
 					raise Exception(NotImplemented)
 				result += decompressed_scanline
 
 				previous_scanline = decompressed_scanline
 			return result
-		else:
-			raise Exception(NotImplemented)
 
 	def decode(self):
 		return self._depredict(self._decompress())
 
 	@classmethod
-	def create(cls, unencoded_data, compress = True):
-		if compress:
-			zlib_encoded_data = zlib.compress(unencoded_data)
-			enc_object = cls(encoded_data = zlib_encoded_data, filtering = Filter.FlateDecode)
+	def _predict(cls, unpredicted_data, columns):
+		assert(len(unpredicted_data) % columns == 0)
+		rows = len(unpredicted_data) // columns
+
+		predicted_data = bytearray()
+		if rows == 1:
+			predictor = Predictor.PNGPredictionSub
+			predicted_data.append(PNGPredictor.Sub)
+			predicted_data += bytearray((x - y) & 0xff for (x, y) in zip(unpredicted_data[1:], unpredicted_data))
 		else:
-			enc_object = cls(encoded_data = unencoded_data, filtering = Filter.Uncompressed)
-		return enc_object
+			predictor = Predictor.PNGPredictionUp
+			previous_scanline = bytes(columns)
+			for row in range(rows):
+				scanline = unpredicted_data[row * columns : (row + 1) * columns]
+				predicted_data.append(PNGPredictor.Up)
+				predicted_data += bytearray((x - y) & 0xff for (x, y) in zip(previous_scanline, scanline))
+
+		return (predicted_data, predictor, columns)
+
+	@classmethod
+	def create(cls, unencoded_data, compress = True, predict = False, columns = None):
+		if predict:
+			if columns is None:
+				columns = len(unencoded_data)
+			(predicted_data, used_predictor, predictor_columns) = cls._predict(unencoded_data, columns)
+		else:
+			(predicted_data, used_predictor, predictor_columns) = (unencoded_data, Predictor.NoPredictor, 1)
+
+		if compress:
+			encoded_data = zlib.compress(predicted_data)
+			filtering = Filter.FlateDecode
+		else:
+			encoded_data = predicted_data
+			filtering = Filter.Uncompressed
+		encoded_object = cls(encoded_data = encoded_data, filtering = filtering, predictor = used_predictor, columns = predictor_columns)
+		return encoded_object
 
 	@classmethod
 	def from_object(cls, obj):
@@ -206,4 +235,9 @@ if __name__ == "__main__":
 	enc = EncodedObject(data, filtering = Filter.Uncompressed, columns = 5, predictor = Predictor.PNGPredictionUp)
 	print(enc)
 	print(enc.decode().hex())
+
+	data = b"Foobar Bar Foobar " * 25
+	print(EncodedObject.create(data, predict = True, columns = len(data) // 25))
+	print(EncodedObject.create(data, predict = False))
+	print(data)
 
