@@ -33,6 +33,12 @@ class Filter(enum.IntEnum):
 	ASCIIHexDecode = 5
 	ASCII85Decode = 6
 
+class PNGPredictor(enum.IntEnum):
+	Sub = 1
+	Up = 2
+	Average = 3
+	Paeth = 4
+
 class Predictor(enum.IntEnum):
 	NoPredictor = 1
 	TIFFPredictor2 = 2
@@ -42,6 +48,7 @@ class Predictor(enum.IntEnum):
 	PNGPredictionAverage = 13
 	PNGPredictionPaeth = 14
 	PNGPredictionOptimum = 15
+
 
 class EncodedObject(object):
 	_FILTER_MAP = {
@@ -140,9 +147,9 @@ class EncodedObject(object):
 			result = bytearray()
 			previous_scanline = bytes(self.columns)
 			for i in range(0, len(deencoded_data), self.columns + 1):
-				png_filter = deencoded_data[i]
+				png_filter = PNGPredictor(deencoded_data[i])
 				scanline = deencoded_data[i + 1 : i + self.columns + 1]
-				if png_filter == 2:
+				if png_filter == PNGPredictor.Up:
 					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(previous_scanline, scanline))
 				else:
 					raise Exception(NotImplemented)
@@ -191,7 +198,7 @@ class EncodedObject(object):
 		if self.predictor != Predictor.NoPredictor:
 			details.append(self.predictor.name)
 			details.append("%d columns" % (self.columns))
-		return "CompressedObject<%s>" % (", ".join(details))
+		return "EncodedObject<%s>" % (", ".join(details))
 
 if __name__ == "__main__":
 	with open("xref.bin", "rb") as f:
