@@ -35,6 +35,9 @@ class PDFParserTest(unittest.TestCase):
 		self.assertEqual(PDFParser.parse("(Foo Bar)"), b"Foo Bar")
 		self.assertEqual(PDFParser.parse("(Foo   Bar)"), b"Foo   Bar")
 		self.assertEqual(PDFParser.parse("(Foo   Bar   )"), b"Foo   Bar   ")
+		self.assertEqual(PDFParser.parse("( Foo)"), b" Foo")
+		self.assertEqual(PDFParser.parse("(Foo )"), b"Foo ")
+		self.assertEqual(PDFParser.parse("( Foo )"), b" Foo ")
 
 	def test_string_escape_sequences(self):
 		self.assertEqual(PDFParser.parse(r"(Foo\n)"), b"Foo\n")
@@ -47,6 +50,7 @@ class PDFParserTest(unittest.TestCase):
 
 	def test_string_nested(self):
 		self.assertEqual(PDFParser.parse("(Foo (Bar))"), b"Foo (Bar)")
+		self.assertEqual(PDFParser.parse("(Foo( Bar))"), b"Foo( Bar)")
 		self.assertEqual(PDFParser.parse("(Foo (Bar)   )"), b"Foo (Bar)   ")
 		self.assertEqual(PDFParser.parse("(Foo ( Bar )   )"), b"Foo ( Bar )   ")
 		self.assertEqual(PDFParser.parse("(Foo (Klammer) Bar)"), b"Foo (Klammer) Bar")
@@ -54,6 +58,8 @@ class PDFParserTest(unittest.TestCase):
 		self.assertEqual(PDFParser.parse("(Foo (Space)                   Yes)"), b"Foo (Space)                   Yes")
 
 	def test_string_non_ascii(self):
+		self.assertEqual(PDFParser.parse(r"(Foo \1 Bar)"), b"Foo \x01 Bar")
+		self.assertEqual(PDFParser.parse(r"(Foo \12 Bar)"), b"Foo \x0a Bar")
 		self.assertEqual(PDFParser.parse(r"(Foo \123 Bar)"), b"Foo S Bar")
 		self.assertEqual(PDFParser.parse(r"(Foo \333 Bar)"), b"Foo \xdb Bar")
 		self.assertEqual(PDFParser.parse("(Foo \xc4 Bar)"), b"Foo \xc4 Bar")

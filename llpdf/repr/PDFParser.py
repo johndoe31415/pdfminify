@@ -42,10 +42,10 @@ class PDFParser(tpg.VerboseParser):
 		token null 'null'									$ None
 		token pdfname_token '/[^\s/<>\[\]()]*'				$ PDFName
 		token hexstring '<[\na-fA-F0-9]*>'					$ ParseTools.to_hexstring
-		token start_string '\(';
+		token start_string '\(\s*';
 		token end_string '\)\s*';
 		token string_content '[^\\()]+';
-		token string_escape_numeric '\\[0-7]{3}\s*';
+		token string_escape_numeric '\\[0-7]{1,3}\s*';
 		token string_escape_char '\\.\s*';
 
 
@@ -85,8 +85,8 @@ class PDFParser(tpg.VerboseParser):
 					| hexstring/e
 		;
 
-		PDFString/s -> start_string							$ s = bytearray()
-							PDFInnerString/e				$ s += e
+		PDFString/s -> start_string/a						$ s = bytearray()
+							PDFInnerString/e				$ s += a.encode()[1:] + e
 						end_string
 		;
 
@@ -108,24 +108,5 @@ def parse(text):
 	return ParseTools.parse_using(text, PDFParser)
 
 if __name__ == "__main__":
-	examples = [
-		r"(Foo Bar)",
-		r"(Foo \\   Bar)",
-		r"(Foo \\ \) Bar)",
-		"(Foo (Klammer) Bar)",
-		"(Foo (Klammer (Klammer2) Yeah) Bar)",
-		"(Foo (Space)                   Yes)",
-		"13478",
-		"<< /Foobar13478 123 >>",
-		"[ /Foobar13478 /Barfoo999 ]",
-		"[ 12345 9999 48 489 8473 << /foo 3939 >>]",
-		"[ 12345 9999 48 489 R 8473 3.43984 << /foo 3939 >>]",
-		"<< /Length 213 0 R    /PatternType 1    /BBox [0 0 2596 37]    /XStep 8243    /YStep 8243    /TilingType 1    /PaintType 1    /Matrix [ 0.333679 0 0 0.333468 78.832642 172.074584 ]    /Resources << /XObject << /x211 211 0 R >> >> >>",
-		"[ 0.333679 0 0 0.333468 78.832642 172.074584 ]",
-		"[ 1.2345 1.2345 ]",
-		"<< /XHeight 0 /CharSet (/F) /FontFile 2992 0 R >>",
-	]
-
-	for example in examples:
-		print(parse(example))
+	print(parse("(Foo( Bar))"))
 

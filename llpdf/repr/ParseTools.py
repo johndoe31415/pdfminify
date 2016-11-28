@@ -21,6 +21,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import re
 from . import tpg
 
 def to_bool(value):
@@ -44,9 +45,12 @@ def interpret_escape_char(text):
 		raise Exception("Unknown escape character sequence %s in string input." % (text.encode("utf-8")))
 	return result + text[2:].encode("ascii")
 
+_numeric_regex = re.compile(r"\\(?P<code>\d{1,3})(?P<space>\s*)")
 def interpret_escape_numeric(text):
-	value = int(text[1 : 4], 8)
-	return bytes([ value ]) + text[4:].encode("ascii")
+	result = _numeric_regex.fullmatch(text)
+	result = result.groupdict()
+	value = int(result["code"], 8)
+	return bytes([ value ]) + result["space"].encode("ascii")
 
 def parse_using(text, parser_class):
 	try:
