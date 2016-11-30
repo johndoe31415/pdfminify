@@ -22,6 +22,7 @@
 
 import enum
 import zlib
+import itertools
 from llpdf.types.PDFName import PDFName
 
 class Filter(enum.IntEnum):
@@ -138,7 +139,21 @@ class EncodedObject(object):
 		elif self._filtering == Filter.RunLengthDecode:
 			return self._rle_decode(self._encoded_data)
 		else:
-			raise Exception(NotImplemented)
+			raise Exception(NotImplemented, self._filtering)
+
+	@staticmethod
+	def _paeth_predictor(a, b, c):
+		# a = left, b = above, c = upper left
+		p = a + b - c
+		pa = abs(p - a)
+		pb = abs(p - b)
+		pc = abs(p - c)
+		if (pa <= pb) and (pa <= pc):
+			return a
+		elif pb <= pc:
+			return b
+		else:
+			return c
 
 	def _depredict(self, deencoded_data):
 		if self.predictor == Predictor.NoPredictor:
@@ -149,14 +164,36 @@ class EncodedObject(object):
 			for i in range(0, len(deencoded_data), self.columns + 1):
 				png_filter = PNGPredictor(deencoded_data[i])
 				scanline = deencoded_data[i + 1 : i + self.columns + 1]
-				if png_filter == PNGPredictor.Up:
-					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(previous_scanline, scanline))
+				if png_filter == PNGPredictor.No:
+					decompressed_scanline = scanline
 				elif png_filter == PNGPredictor.Sub:
-					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(scanline, scanline[1:]))
+					previous_value = 0
+					decompressed_scanline = bytearray()
+					for (index, value) in enumerate(scanline):
+						new_value = (value + previous_value) & 0xff
+						decompressed_scanline.append(new_value)
+						previous_value = new_value
+				elif png_filter == PNGPredictor.Up:
+					decompressed_scanline = bytes((prev + cur) & 0xff for (prev, cur) in zip(previous_scanline, scanline))
+				elif png_filter == PNGPredictor.Average:
+					previous_value = 0
+					decompressed_scanline = bytearray()
+					for (index, value) in enumerate(scanline):
+						new_value = (value + ((previous_value + previous_scanline[index]) // 2)) & 0xff
+						decompressed_scanline.append(new_value)
+						previous_value = new_value
+				elif png_filter == PNGPredictor.Paeth:
+					previous_value = 0
+					decompressed_scanline = bytearray()
+					for (index, value) in enumerate(scanline):
+						new_value = (value + self._paeth_predictor(previous_value, previous_scanline[index], previous_scanline[index - 1] if (index > 0) else 0)) & 0xff
+						decompressed_scanline.append(new_value)
+						previous_value = new_value
 				else:
-					raise Exception(NotImplemented)
+					raise Exception(NotImplemented, png_filter)
 				result += decompressed_scanline
-
+#				print("%2d %2d: %s" % (int(png_filter), i // (self.columns + 1), scanline.hex()))
+#				print("   %2d: %s" % (i // (self.columns + 1), decompressed_scanline.hex()))
 				previous_scanline = decompressed_scanline
 			return result
 
