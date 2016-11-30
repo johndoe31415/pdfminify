@@ -101,7 +101,7 @@ pdf_filter_classes = [ filter_class for filter_class in [
 	llpdf.filters.AddCropBoxFilter if (args.cropbox and (not args.no_filters)) else None,
 	llpdf.filters.ExplicitLengthFilter if (not args.no_filters) else None,
 	llpdf.filters.DeleteOrphanedObjectsFilter if (not args.no_filters) else None,
-#	llpdf.filters.TagFilter if (not (args.no_filters or args.no_pdf_tagging)) else None,
+	llpdf.filters.TagFilter if (not (args.no_filters or args.no_pdf_tagging)) else None,
 	llpdf.filters.PDFAFilter if (args.pdfa_1b and (not args.no_filters)) else None,
 	llpdf.filters.DecompressFilter if args.decompress_data else None,
 ] if filter_class is not None ]

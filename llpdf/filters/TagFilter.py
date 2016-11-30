@@ -27,8 +27,10 @@ from .PDFFilter import PDFFilter
 class TagFilter(PDFFilter):
 	def run(self):
 		creator = self._pdf.get_info("Creator")
-		creator += " (pdfminify " + llpdf.VERSION + ")"
-		creator = re.sub(" \(pdfminify.*", "", creator)
+		if creator == "":
+			creator += "pdfminify " + llpdf.VERSION
+		else:
+			creator = re.sub(" \(pdfminify.*", "", creator)
+			creator += " (pdfminify " + llpdf.VERSION + ")"
 
-		creator += " (pdfminify " + llpdf.VERSION + ")"
 		self._pdf.set_info("Creator", creator)
