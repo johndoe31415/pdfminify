@@ -69,6 +69,14 @@ class EncodedObject(object):
 		self._predictor = predictor
 
 	@property
+	def decompressible(self):
+		return self._filtering != Filter.DCTDecode
+
+	@property
+	def compressed(self):
+		return self._filtering != Filter.Uncompressed
+
+	@property
 	def encoded_data(self):
 		return self._encoded_data
 
@@ -108,6 +116,10 @@ class EncodedObject(object):
 		if PDFName("/DecodeParms") in content_object:
 			del content_object[PDFName("/DecodeParms")]
 		content_object.update(self.meta_dict)
+
+	def place_in_object_stream(self, obj):
+		obj.set_raw_stream(self.encoded_data)
+		self.update_meta_dict(obj.content)
 
 	@staticmethod
 	def _rle_decode(rle_data):

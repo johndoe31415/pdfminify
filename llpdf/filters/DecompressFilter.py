@@ -21,14 +21,12 @@
 #
 
 from .PDFFilter import PDFFilter
+from llpdf.EncodeDecode import EncodedObject
 from llpdf.types.PDFName import PDFName
 
 class DecompressFilter(PDFFilter):
 	def run(self):
-		for obj in self._pdf:
-			TODO_ABORT
-#			if obj.has_stream and (PDFName("/Filter") in obj.content) and (obj.content[PDFName("/Filter")] == PDFName("/FlateDecode")):
-#				del obj.content[PDFName("/Filter")]
-#				del obj.content[PDFName("/Filter")]
-#				obj.set_stream(zlib.decompress(obj.stream))
-#				obj.content[PDFName("/Length")] = len(obj.stream)
+		for obj in self._pdf.stream_objects:
+			if obj.stream.compressed and obj.stream.decompressible:
+				uncompressed_stream = EncodedObject.create(obj.stream.decode(), compress = False)
+				uncompressed_stream.place_in_object_stream(obj)

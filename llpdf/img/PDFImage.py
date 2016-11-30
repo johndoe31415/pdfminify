@@ -184,7 +184,7 @@ class PDFImage(object):
 			pnm_image.write_file(filename)
 		else:
 			with open(filename, "wb") as f:
-				f.write(self._imgdata)
+				f.write(self._imgdata.encoded_data)
 
 	def __len__(self):
 		return len(self._imgdata)
