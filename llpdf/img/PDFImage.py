@@ -25,6 +25,7 @@ import hashlib
 import re
 import enum
 import subprocess
+import logging
 from tempfile import NamedTemporaryFile
 from .PnmPicture import PnmPictureFormat, PnmPicture
 from llpdf.types.PDFName import PDFName
@@ -36,6 +37,8 @@ class PDFImageColorSpace(enum.IntEnum):
 	DeviceGray = 2
 
 class PDFImage(object):
+	_log = logging.getLogger("llpdf.img.PDFImage")
+
 	def __init__(self, width, height, colorspace, bits_per_component, imgdata, inverted):
 		self._width = width
 		self._height = height
@@ -159,6 +162,11 @@ class PDFImage(object):
 		if (self.colorspace == PDFImageColorSpace.DeviceRGB) and (self.bits_per_component == 8):
 			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Pixmap)
 		elif (self.colorspace == PDFImageColorSpace.DeviceGray) and (self.bits_per_component == 8):
+			if len(pixeldata) == 2 * self.width * self.height:
+				# This is odd. On some LaTeX documents, the alpha channel image
+				# is double of what the actual metadata indicates. Truncate
+				self._log.warn("Warning: Duplicate image size of %s truncated from %d to %d bytes." % (str(self), len(pixeldata), len(pixeldata) // 2))
+				pixeldata = pixeldata[ : len(pixeldata) // 2]
 			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Graymap)
 		elif (self.colorspace == PDFImageColorSpace.DeviceGray) and (self.bits_per_component == 1):
 			image = PnmPicture(width = self.width, height = self.height, data = pixeldata, img_format = PnmPictureFormat.Bitmap)
