@@ -29,4 +29,4 @@ class DecompressFilter(PDFFilter):
 		for obj in self._pdf.stream_objects:
 			if obj.stream.compressed and obj.stream.decompressible:
 				uncompressed_stream = EncodedObject.create(obj.stream.decode(), compress = False)
-				uncompressed_stream.place_in_object_stream(obj)
+				obj.set_stream(uncompressed_stream)

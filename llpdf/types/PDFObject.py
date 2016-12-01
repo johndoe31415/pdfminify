@@ -70,6 +70,11 @@ class PDFObject(Comparable):
 	def set_content(self, content):
 		self._content = content
 
+	def set_stream(self, stream):
+		assert(isinstance(stream, EncodedObject))
+		self.set_raw_stream(stream.encoded_data)
+		stream.update_meta_dict(self.content)
+
 	def set_raw_stream(self, raw_stream):
 		assert((raw_stream is None) or isinstance(raw_stream, bytes))
 		self._stream = raw_stream

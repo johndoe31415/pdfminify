@@ -26,7 +26,7 @@ from .Comparable import Comparable
 
 class PDFName(Comparable):
 	_HEX_CHAR = re.compile("#([a-fA-F0-9]{2})")
-	_PRINTABLE = set(string.ascii_letters + string.digits)
+	_PRINTABLE = set(string.ascii_letters + string.digits + ".-+")
 
 	def __init__(self, name):
 		assert(name.startswith("/"))

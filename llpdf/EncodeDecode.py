@@ -117,10 +117,6 @@ class EncodedObject(object):
 			del content_object[PDFName("/DecodeParms")]
 		content_object.update(self.meta_dict)
 
-	def place_in_object_stream(self, obj):
-		obj.set_raw_stream(self.encoded_data)
-		self.update_meta_dict(obj.content)
-
 	@staticmethod
 	def _rle_decode(rle_data):
 		result = bytearray()
