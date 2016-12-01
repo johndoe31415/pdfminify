@@ -97,7 +97,7 @@ pdf_filter_classes = [ filter_class for filter_class in [
 	llpdf.filters.RemoveDuplicateImageOptimization if (not args.no_filters) else None,
 	llpdf.filters.RemoveMetadataFilter if (args.strip_metadata and (not args.no_filters)) else None,
 	llpdf.filters.FlattenImageOptimization if ((args.remove_alpha or args.pdfa_1b) and (not args.no_filters)) else None,
-	llpdf.filters.DownscaleImageOptimization if ((not args.no_downscaling) and (not args.no_filters)) else None,
+	llpdf.filters.DownscaleImageOptimization if ((args.saveimgdir is not None) or ((not args.no_downscaling) and (not args.no_filters))) else None,
 	llpdf.filters.AddCropBoxFilter if (args.cropbox and (not args.no_filters)) else None,
 	llpdf.filters.ExplicitLengthFilter if (not args.no_filters) else None,
 	llpdf.filters.DeleteOrphanedObjectsFilter if (not args.no_filters) else None,

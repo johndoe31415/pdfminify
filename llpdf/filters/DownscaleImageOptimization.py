@@ -83,6 +83,11 @@ class DownscaleImageOptimization(PDFFilter):
 				continue
 			self._save_image(image, img_xref, "original")
 
+			if self._args.no_downscaling:
+				# We arrive here if we're just trying to save exported images.
+				# Maybe exporing of images should be a own filter?
+				continue
+
 			current_dpi = min(draw_cmd.native_extents.dpi(image.width, image.height) for draw_cmd in img_draw_cmds)
 			scale_factor = min(self._args.target_dpi / current_dpi, 1)
 			self._log.debug("Estimated image %s to have minimum resulution of %d dpi: scale factor = %.3f", img_xref, current_dpi, scale_factor)
