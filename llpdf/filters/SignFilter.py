@@ -42,7 +42,7 @@ class SignFilter(PDFFilter):
 	def _get_signature_extents(self):
 		posx = Measurements.convert(25, "mm", "native")
 		posy = Measurements.convert(25, "mm", "native")
-		width = round(Measurements.convert(500, "mm", "native"))
+		width = round(Measurements.convert(50, "mm", "native"))
 		height = round(width / self._signature_box_aspect_ratio)
 		return [ posx, posy, width, height ]
 

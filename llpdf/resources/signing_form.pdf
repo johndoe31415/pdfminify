@@ -1,6 +1,6 @@
 % Scale graphics first
 q
-0.22 0 0 0.22 4 4 cm
+0.3 0 0 0.3 4 4 cm
 
 q
 q /Pattern cs /p5 scn /a0 gs
@@ -89,12 +89,14 @@ Q
 Q
 
 % Bounding box
-0.5 0.5 141 56 re s
+0.5 w					% Line width
+[ 5 2 ] 0 d				% Dashed line
+0.5 0.5 141 79 re s		% Bounding box
 
 % Text
 BT
 /F0 8 Tf
-45 48 Td
+45 70 Td
 (Digitally signed document) Tj
 ET
 
