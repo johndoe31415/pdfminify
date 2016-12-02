@@ -105,7 +105,7 @@ class SignFilter(PDFFilter):
 		form_data = pkgutil.get_data("llpdf.resources", "signing_form.pdf")
 		return self._create_object({
 			PDFName("/Type"):			PDFName("/XObject"),
-			PDFName("/SubType"):		PDFName("/Form"),
+			PDFName("/Subtype"):		PDFName("/Form"),
 			PDFName("/BBox"):			self._get_signature_bbox(),
 			PDFName("/Resources"):		resources_xref,
 		}, form_data)
