@@ -259,7 +259,7 @@ class EncodedObject(object):
 		else:
 			filtering = Filter.Uncompressed
 
-		if PDFName("/DecodeParms") in obj.content:
+		if (PDFName("/DecodeParms") in obj.content) and (PDFName("/Predictor") in obj.content[PDFName("/DecodeParms")]):
 			predictor = Predictor(obj.content[PDFName("/DecodeParms")][PDFName("/Predictor")])
 			columns = obj.content[PDFName("/DecodeParms")][PDFName("/Columns")]
 		else:
