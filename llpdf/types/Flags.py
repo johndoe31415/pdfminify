@@ -20,16 +20,21 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-from .DownscaleImageOptimization import DownscaleImageOptimization
-from .RemoveDuplicateImageOptimization import RemoveDuplicateImageOptimization
-from .AddCropBoxFilter import AddCropBoxFilter
-from .DeleteOrphanedObjectsFilter import DeleteOrphanedObjectsFilter
-from .ExplicitLengthFilter import ExplicitLengthFilter
-from .FlattenImageOptimization import FlattenImageOptimization
-from .RemoveMetadataFilter import RemoveMetadataFilter
-from .PDFAFilter import PDFAFilter
-from .DecompressFilter import DecompressFilter
-from .AnalyzeFilter import AnalyzeFilter
-from .TagFilter import TagFilter
-from .EmbedPayloadFilter import EmbedPayloadFilter
-from .SignFilter import SignFilter
+import enum
+
+class AnnotationFlag(enum.IntEnum):
+	Invisible = (1 << 0)
+	Hidden = (1 << 1)
+	Print = (1 << 2)
+	NoZoom = (1 << 3)
+	NoRotate = (1 << 4)
+	NoView = (1 << 5)
+	ReadOnly = (1 << 6)
+	Locked = (1 << 7)
+	ToggleNoView = (1 << 8)
+	LockedContents = (1 << 9)
+
+class FieldFlag(enum.IntEnum):
+	ReadOnly = (1 << 0)
+	Required = (1 << 1)
+	NoExport = (1 << 2)

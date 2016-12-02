@@ -61,6 +61,11 @@ class Timestamp(object):
 		result += "%+03d:%02d" % (self._offset_mins // 60, abs(self._offset_mins) % 60)
 		return result
 
+	def format_pdf(self):
+		result = self._ts.strftime("D:%Y%m%d%H%M%S")
+		result += "%+03d'%02d'" % (self._offset_mins // 60, abs(self._offset_mins) % 60)
+		return result
+
 	def __repr__(self):
 		return str(self)
 

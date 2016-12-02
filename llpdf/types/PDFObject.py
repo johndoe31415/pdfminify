@@ -76,7 +76,7 @@ class PDFObject(Comparable):
 		stream.update_meta_dict(self.content)
 
 	def set_raw_stream(self, raw_stream):
-		assert((raw_stream is None) or isinstance(raw_stream, bytes))
+		assert((raw_stream is None) or isinstance(raw_stream, (bytes, bytearray)))
 		self._stream = raw_stream
 
 	def replace_by(self, pdfobj):
@@ -90,13 +90,9 @@ class PDFObject(Comparable):
 	def create(cls, objid, gennum, content, stream = None):
 		assert((stream is None) or isinstance(stream, EncodedObject))
 		result = cls(objid, gennum, rawdata = None)
-		if stream is not None:
-			stream.update_meta_dict(content)
-			raw_stream = stream.encoded_data
-		else:
-			raw_stream = None
 		result.set_content(content)
-		result.set_raw_stream(raw_stream)
+		if stream is not None:
+			result.set_stream(stream)
 		return result
 
 	@classmethod
@@ -159,8 +155,10 @@ class PDFObject(Comparable):
 
 	@property
 	def stream(self):
-		assert(self.has_stream)
-		return EncodedObject.from_object(self)
+		if not self.has_stream:
+			return None
+		else:
+			return EncodedObject.from_object(self)
 
 	@property
 	def has_stream(self):

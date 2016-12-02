@@ -20,42 +20,38 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import re
-import string
-from .Comparable import Comparable
+import logging
 
-class PDFName(Comparable):
-	_HEX_CHAR = re.compile("#([a-fA-F0-9]{2})")
-	_PRINTABLE = set(string.ascii_letters + string.digits + ".-+_")
+from .types.PDFObject import PDFObject
+from .FileRepr import StreamRepr
 
-	def __init__(self, name):
-		assert(name.startswith("/"))
-		self._name = self._HEX_CHAR.sub(lambda match: chr(int(match.group(1), 16)), name)
+class PDFResources(object):
+	_log = logging.getLogger("llpdf.PDFResources")
 
-	@property
-	def display_name(self):
-		return self._name
+	def __init__(self, resource_data):
+		self._objs = { }
+		self._f = StreamRepr(resource_data)
+		self._read_objects()
 
-	def cmpkey(self):
-		return ("PDFName", self._name)
+	def _read_objects(self):
+		while True:
+			obj = PDFObject.parse(self._f)
+			if obj is None:
+				break
+			self._objs[(obj.objid, obj.gennum)] = obj
 
-	@staticmethod
-	def _escape(char):
-		return "#%02x" % (ord(char))
+	def replace_object(self, obj):
+		self._objs[(obj.objid, obj.gennum)] = obj
 
-	@property
-	def value(self):
-		return "/" + "".join(char if (char in self._PRINTABLE) else self._escape(char) for char in self._name[1:])
+	def delete_object(self, objid, gennum):
+		del self._objs[(objid, gennum)]
 
-	def __repr__(self):
-		return str(self)
+	def __iter__(self):
+		return iter(self._objs.values())
+
+	def __len__(self):
+		return len(self._objs)
 
 	def __str__(self):
-		return "Name<%s>" % (self.value)
+		return "PDFResources<%d>" % (len(self))
 
-if __name__ == "__main__":
-	x = PDFName("/Adobe#20Green")
-	print(x, x.value)
-
-	x = PDFName("/Adobe#ff#20#41#41#20Green")
-	print(x, x.value)

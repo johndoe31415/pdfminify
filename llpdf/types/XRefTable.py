@@ -144,7 +144,9 @@ class XRefTable(object):
 	def parse_xref_object(self, rawdata, index, field_lengths):
 		entry_width = sum(field_lengths)
 		self._log.trace("XRefStrm length is %d bytes with field lengths %s, i.e. %d full entries (%d bytes per entry, %d dangling bytes). Index is %s.", len(rawdata), field_lengths, len(rawdata) // entry_width, len(rawdata) % entry_width, entry_width, index)
-		assert(isinstance(index, list))
+		assert((index is None) or isinstance(index, list))
+		if index is None:
+			index = [ 0, None ]
 		assert((len(index) % 2) == 0)
 		assert(len(index) == 2)			# For now, only this is supported
 		assert(isinstance(rawdata, (bytes, bytearray)))

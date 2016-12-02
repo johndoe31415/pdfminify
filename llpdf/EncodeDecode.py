@@ -249,7 +249,13 @@ class EncodedObject(object):
 	@classmethod
 	def from_object(cls, obj):
 		if PDFName("/Filter") in obj.content:
-			filtering = cls._REV_FILTER_MAP[obj.content[PDFName("/Filter")]]
+			pdf_filter = obj.content[PDFName("/Filter")]
+			if isinstance(pdf_filter, list):
+				if len(pdf_filter) == 1:
+					pdf_filter = pdf_filter[0]
+				else:
+					raise Exception("Cannot create EncodedObject from object that has multiple filters applied: %s" % (str(pdf_filter)))
+			filtering = cls._REV_FILTER_MAP[pdf_filter]
 		else:
 			filtering = Filter.Uncompressed
 

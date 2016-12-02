@@ -46,7 +46,7 @@ class CompressedObjectContainer(object):
 		header = [ ]
 		data = bytearray()
 		for obj in self._contained_objects:
-			obj_data = serializer.serialize(obj.content).encode("utf-8")
+			obj_data = serializer.serialize(obj.content)
 			offset = len(data)
 			header.append(obj.objid)
 			header.append(offset)

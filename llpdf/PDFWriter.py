@@ -42,6 +42,15 @@ class PDFWriter(object):
 		self._compress_objects = [ ]
 		self._compression_containers = [ ]
 		self._xref = XRefTable()
+		self._serializer = PDFSerializer(pretty = self._pretty)
+
+	@property
+	def outfile(self):
+		return self._f
+
+	@property
+	def serializer(self):
+		return self._serializer
 
 	def _write_header(self):
 		if (not self._use_object_streams) and (not self._use_xref_stream):
@@ -53,8 +62,7 @@ class PDFWriter(object):
 	def _write_uncompressed_object(self, obj):
 		offset = self._f.tell()
 		self._f.writeline("%d %d obj" % (obj.objid, obj.gennum))
-		serializer = PDFSerializer(pretty = self._pretty)
-		self._f.writeline(serializer.serialize(obj.content))
+		self._f.write(self._serializer.serialize(obj.content, start_offset = self._f.tell()))
 		if obj.has_stream:
 			self._f.writeline("stream")
 			self._f.write(obj.raw_stream)
@@ -103,10 +111,10 @@ class PDFWriter(object):
 			self._containerize_compressed_object(obj)
 
 		# Afterwards write containers to file
-		serializer = PDFSerializer(pretty = self._pretty)
 		for container in self._compression_containers:
 			self._log.debug("Writing compressed object %s", container)
-			container_obj = container.serialize(serializer)
+			self._serializer.offset = self._f.tell()
+			container_obj = container.serialize(self._serializer)
 			self._write_uncompressed_object(container_obj)
 
 	def _write_xrefs(self):
@@ -120,8 +128,7 @@ class PDFWriter(object):
 
 	def _write_trailer(self):
 		self._f.writeline("trailer")
-		serializer = PDFSerializer(pretty = self._pretty)
-		self._f.writeline(serializer.serialize(self._pdf.trailer))
+		self._f.write(self._serializer.serialize(self._pdf.trailer, start_offset = self._f.tell()))
 
 	def _write_finish(self):
 		self._f.writeline("startxref")

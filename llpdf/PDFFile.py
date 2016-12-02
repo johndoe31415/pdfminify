@@ -29,6 +29,7 @@ from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
 from .types.PDFXRef import PDFXRef
 from .types.XRefTable import XRefTable
+from .filters.Relinker import Relinker
 from llpdf.repr import PDFParser, GraphicsParser
 from .FileRepr import StreamRepr
 
@@ -215,7 +216,7 @@ class PDFFile(object):
 						else:
 							self._trailer = xref_object.content
 							assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
-							self._xref_table.parse_xref_object(xref_object.stream.decode(), self._trailer[PDFName("/Index")], self._trailer[PDFName("/W")])
+							self._xref_table.parse_xref_object(xref_object.stream.decode(), self._trailer.get(PDFName("/Index")), self._trailer[PDFName("/W")])
 			elif line == "%%EOF":
 				self._log.debug("Hit EOF marker at 0x%x.", self._f.tell())
 				break
@@ -234,9 +235,6 @@ class PDFFile(object):
 			self._read_endfile()
 
 	def _unpack_objstrm(self, objstrm_obj):
-		if objstrm_obj.content[PDFName("/Filter")] != PDFName("/FlateDecode"):
-			self._log.warn("Cannot unpack object stream %s with unknown filter %s.", objstrm_obj, objstrm_obj.content[PDFName("/Filter")])
-			return
 		data = objstrm_obj.stream.decode()
 		objcnt = objstrm_obj.content[PDFName("/N")]
 		first = objstrm_obj.content[PDFName("/First")]
@@ -281,7 +279,7 @@ class PDFFile(object):
 		info_node_xref = self.trailer[PDFName("/Info")]
 		info_node = self.lookup(info_node_xref)
 		key = PDFName("/" + key)
-		if key not in info_node.content:
+		if (info_node is None) or (key not in info_node.content):
 			return ""
 		else:
 			bin_value = info_node.content[key]
@@ -294,12 +292,19 @@ class PDFFile(object):
 	def set_info(self, key, value):
 		info_node_xref = self.trailer[PDFName("/Info")]
 		info_node = self.lookup(info_node_xref)
-		info_node.content[PDFName("/" + key)] = value.encode("latin1")
+		if info_node is not None:
+			info_node.content[PDFName("/" + key)] = value.encode("latin1")
+		else:
+			self._log.error("Cannot set /Info dictionary entry \"%s\" to \"%s\": info_node is None", key, value)
+
+	def get_free_objids(self, count = 1):
+		assert(count >= 1)
+		for objid in range(1, len(self._objs) + count + 1):
+			if (objid, 0) not in self._objs:
+				yield objid
 
 	def get_free_objid(self):
-		for objid in range(1, len(self._objs) + 2):
-			if (objid, 0) not in self._objs:
-				return objid
+		return list(self.get_free_objids())[0]
 
 	def delete_object(self, objid, gennum):
 		key = (objid, gennum)
@@ -310,3 +315,19 @@ class PDFFile(object):
 		self._objs[(obj.objid, obj.gennum)] = obj
 		return self
 
+	def coalesce(self, resources):
+		relinker = Relinker(resources)
+		objids = list(self.get_free_objids(len(resources)))
+		for (resource_object, new_objid) in zip(resources, objids):
+			old_xref = resource_object.xref
+			new_xref = PDFXRef(new_objid, 0)
+			relinker.relink(old_xref, new_xref)
+		relinker.run()
+
+		unresolved = relinker.unresolved_references
+		if len(unresolved) > 0:
+			self._log.warn("Coalescing PDFResources with unresolved cross references %s.", unresolved)
+		for obj in resources:
+			self.replace_object(obj)
+
+		return relinker

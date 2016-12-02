@@ -23,12 +23,15 @@
 import collections
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
+from llpdf.types.MarkerObject import MarkerObject
 
 class PDFSerializer(object):
 	_PRINTABLE = set(b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!\"#$%&'*+,-./:;<=>?@[]^_`{|}~ ")
 
 	def __init__(self, pretty = False):
 		self._pretty = pretty
+		self._offset = 0
+		self._marks = { }
 
 	def _serialize_hexbytes(self, obj):
 		yield "<"
@@ -92,11 +95,37 @@ class PDFSerializer(object):
 				yield " "
 				yield from self._serialize(element, nesting_level + 1)
 			yield " ]"
+		elif isinstance(obj, MarkerObject):
+			self._marks[obj.name] = self._offset
+			if obj.is_raw:
+				yield obj.raw
+			else:
+				yield from self._serialize(obj.child)
 		else:
 			raise Exception("Unknown serialization token: %s" % (type(obj)))
 
-	def serialize(self, obj):
-		return "".join(self._serialize(obj))
+	def get_mark(self, name):
+		return self._marks[name]
+
+	@property
+	def offset(self):
+		return self._offset
+
+	@offset.setter
+	def offset(self, value):
+		self._offset = value
+
+	def serialize(self, obj, start_offset = None):
+		if start_offset is not None:
+			self.offset = start_offset
+
+		result = bytearray()
+		for next_part in self._serialize(obj):
+			next_part = next_part.encode("latin1")
+			self._offset += len(next_part)
+			result += next_part
+		result += b"\n"
+		return result
 
 if __name__ == "__main__":
 	serializer = PDFSerializer(pretty = True)

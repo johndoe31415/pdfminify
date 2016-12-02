@@ -20,42 +20,38 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import re
-import string
-from .Comparable import Comparable
-
-class PDFName(Comparable):
-	_HEX_CHAR = re.compile("#([a-fA-F0-9]{2})")
-	_PRINTABLE = set(string.ascii_letters + string.digits + ".-+_")
-
-	def __init__(self, name):
-		assert(name.startswith("/"))
-		self._name = self._HEX_CHAR.sub(lambda match: chr(int(match.group(1), 16)), name)
+class MarkerObject(object):
+	def __init__(self, name, raw = None, child = None):
+		if not ((raw is None) ^ (child is None)):
+			raise Exception("Either one of 'raw' or 'child' must be set, but not both.")
+		if raw is not None:
+			assert(isinstance(raw, str))
+		self._name = name
+		self._raw = raw
+		self._child = child
 
 	@property
-	def display_name(self):
+	def name(self):
 		return self._name
 
-	def cmpkey(self):
-		return ("PDFName", self._name)
-
-	@staticmethod
-	def _escape(char):
-		return "#%02x" % (ord(char))
+	@property
+	def is_raw(self):
+		return self._raw is not None
 
 	@property
-	def value(self):
-		return "/" + "".join(char if (char in self._PRINTABLE) else self._escape(char) for char in self._name[1:])
+	def raw(self):
+		return self._raw
+
+	@property
+	def child(self):
+		return self._child
 
 	def __repr__(self):
 		return str(self)
 
 	def __str__(self):
-		return "Name<%s>" % (self.value)
+		if self._raw:
+			return "RawMarkerObject<%s: %s>" % (self.name, self.raw)
+		else:
+			return "ChildMarkerObject<%s: %s>" % (self.name, str(self.child))
 
-if __name__ == "__main__":
-	x = PDFName("/Adobe#20Green")
-	print(x, x.value)
-
-	x = PDFName("/Adobe#ff#20#41#41#20Green")
-	print(x, x.value)

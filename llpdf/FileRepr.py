@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import os
 import types
 
 class _TempSeekObject(object):
@@ -44,11 +45,18 @@ class FileWriterDecorator(object):
 	def writeline(self, text):
 		return self.write((text + "\n").encode("utf-8"))
 
+	def filesize(self):
+		pos = self.tell()
+		self.seek(0, os.SEEK_END)
+		filesize = self.tell()
+		self.seek(pos)
+		return filesize
+
 	@classmethod
 	def wrap(cls, f):
 		f.writeline = types.MethodType(cls.writeline, f)
+		f.filesize = types.MethodType(cls.filesize, f)
 		return f
-
 
 class StreamRepr(object):
 	def __init__(self, buf):

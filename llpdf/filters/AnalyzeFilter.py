@@ -123,12 +123,24 @@ class AnalyzeFilter(PDFFilter):
 				descriptor_charset = [ char for char in descriptor_charset if char != "" ]
 				info.append("CharSet length %d" % (len(descriptor_charset)))
 
-		print("Font Object (%s font) ObjId=%d: %s" % (ftype, font_obj.objid, ", ".join(info)))
+		print("Font object (%s font) ObjId=%d: %s" % (ftype, font_obj.objid, ", ".join(info)))
 		self._dump_object(font_obj)
+		print("-" * 120)
+
+	def _print_sig(self, sig_obj):
+		info = [ ]
+		print("Signature object ObjId=%d: %s" % (sig_obj.objid, ", ".join(info)))
+		self._dump_object(sig_obj)
 		print("-" * 120)
 
 	def run(self):
 		for obj in self._pdf:
-			if obj.getattr(PDFName("/Type")) == PDFName("/Font"):
+			objtype = obj.getattr(PDFName("/Type"))
+			if objtype == PDFName("/Font"):
 				self._print_font(obj)
+
+		for obj in self._pdf:
+			objtype = obj.getattr(PDFName("/Type"))
+			if objtype == PDFName("/Sig"):
+				self._print_sig(obj)
 
