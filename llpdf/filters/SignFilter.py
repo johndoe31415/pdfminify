@@ -31,7 +31,7 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.MarkerObject import MarkerObject
 from llpdf.EncodeDecode import EncodedObject
-from llpdf.types.Flags import AnnotationFlag, FieldFlag
+from llpdf.types.Flags import AnnotationFlag, FieldFlag, SignatureFlag
 from llpdf.types.Timestamp import Timestamp
 from llpdf.Measurements import Measurements
 from llpdf.tools.OpenSSLVersion import OpenSSLVersion
@@ -164,15 +164,17 @@ class SignFilter(PDFFilter):
 		page = self._pdf.lookup(annotated_page_xref)
 
 		# TODO: What if there are already annotations? append instead of overwrite
+		assert(PDFName("/Annots") not in page.content)
 		page.content[PDFName("/Annots")] = annots_xref
 
 		root_xref = self._pdf.trailer[PDFName("/Root")]
 		root_obj = self._pdf.lookup(root_xref)
 
-		# TODO: Is this necessary?
+		# Write the interactive form dictionary
+		assert(PDFName("/AcroForm") not in page.content)
 		root_obj.content[PDFName("/AcroForm")] = self._create_object({
 			PDFName("/Fields"):		[ annot_xref ],
-			PDFName("/SigFlags"):	3,
+			PDFName("/SigFlags"):	SignatureFlag.SignaturesExist | SignatureFlag.AppendOnly,
 		})
 
 

@@ -38,3 +38,7 @@ class FieldFlag(enum.IntEnum):
 	ReadOnly = (1 << 0)
 	Required = (1 << 1)
 	NoExport = (1 << 2)
+
+class SignatureFlag(enum.IntEnum):
+	SignaturesExist = (1 << 0)
+	AppendOnly = (1 << 1)
