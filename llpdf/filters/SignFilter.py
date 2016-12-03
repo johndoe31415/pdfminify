@@ -34,6 +34,7 @@ from llpdf.EncodeDecode import EncodedObject
 from llpdf.types.Flags import AnnotationFlag, FieldFlag
 from llpdf.types.Timestamp import Timestamp
 from llpdf.Measurements import Measurements
+from llpdf.tools.OpenSSLVersion import OpenSSLVersion
 from .PDFFilter import PDFFilter
 
 class SignFilter(PDFFilter):
@@ -54,11 +55,6 @@ class SignFilter(PDFFilter):
 		(posx, posy, width, height) = self._get_signature_extents()
 		return [ 0, 0, width, height ]
 
-	def _get_openssl_version(self):
-		version = subprocess.check_output([ "openssl", "version" ])
-		version = version.decode().rstrip("\r\n")
-		return version
-
 	def _do_sign(self, bin_data):
 		cmd = [ "openssl", "cms", "-sign", "-binary" ]
 		cmd += [ "-signer", self._args.sign_cert ]
@@ -78,25 +74,20 @@ class SignFilter(PDFFilter):
 		return PDFXRef(objid, 0)
 
 	def _property_dict(self):
+		openssl_version = OpenSSLVersion.get()
 		properties = {
 			PDFName("/App"): {
 				PDFName("/Name"):			PDFName("/PDFMinify"),
 				PDFName("/OS"):				[ PDFName("/Linux") ],
-				PDFName("/R"):				0,	# TODO Changeme
-				PDFName("/REx"):			b"v0.01",	# TODO Changeme
+				PDFName("/R"):				llpdf.VERSION_INT,
+				PDFName("/REx"):			llpdf.VERSION.encode("ascii"),
 				PDFName("/TrustedMode"):	False,
 			},
 			PDFName("/Filter"): {
-				PDFName("/Date"):			b"Nov 28 2016 11:12:06",	# TODO Changeme
 				PDFName("/Name"):			PDFName("/OpenSSL"),
-				PDFName("/REx"):			self._get_openssl_version().encode(),
-				PDFName("/R"):				9999,	# TODO Changeme
-				PDFName("/V"):				1,	# TODO What is this?
-			},
-			PDFName("/PubSec"): {
-				PDFName("/Date"):			b"Nov 28 2016 11:12:06",	# TODO Changeme
-				PDFName("/NoEFontNoWarn"):	True,
-				PDFName("/R"):				9999,				# TODO Changeme
+				PDFName("/Date"):			openssl_version.date.encode("ascii"),
+				PDFName("/REx"):			openssl_version.text.encode(),
+				PDFName("/R"):				int(openssl_version),
 			},
 		}
 		return properties
@@ -131,6 +122,7 @@ class SignFilter(PDFFilter):
 		return self._create_object({
 			PDFName("/Type"):			PDFName("/XObject"),
 			PDFName("/Subtype"):		PDFName("/Form"),
+			PDFName("/FormType"):		1,		# ???
 			PDFName("/BBox"):			self._get_signature_bbox(),
 			PDFName("/Resources"):		resources_xref,
 		}, form_data)
