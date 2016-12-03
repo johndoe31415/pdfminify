@@ -20,6 +20,7 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import re
 import struct
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
@@ -44,6 +45,7 @@ class _T1PRNG(object):
 
 class T1Font(object):
 	_PFB_HEADER = struct.Struct("< H L")
+	_FONT_BBOX_RE = re.compile(r"/FontBBox\s*{(?P<v1>-?\d+)\s+(?P<v2>-?\d+)\s+(?P<v3>-?\d+)\s+(?P<v4>-?\d+)\s*}")
 
 	def __init__(self, cleardata, cipherdata, trailerdata):
 		self._cleardata = cleardata
@@ -106,6 +108,23 @@ class T1Font(object):
 		obj = PDFObject.create(objid, 0, content, stream)
 		return obj
 
+	def dump(self, filename_prefix):
+		with open(filename_prefix + "1", "wb") as f:
+			f.write(self._cleardata)
+		with open(filename_prefix + "2", "wb") as f:
+			f.write(self.decrypt())
+		with open(filename_prefix + "3", "wb") as f:
+			f.write(self._trailerdata)
+
+	def get_font_bbox(self):
+		cleartext = self._cleardata.decode("ascii")
+		print(cleartext.replace("\r", "\n"))
+		result = self._FONT_BBOX_RE.search(cleartext)
+		if result is None:
+			raise Exception("/FontBBox not found in clear text data of T1 font.")
+		result = result.groupdict()
+		return [ int(result["v1"]), int(result["v2"]), int(result["v3"]), int(result["v4"]) ]
+
 	def __str__(self):
 		return "T1Font<%d, %d, %d>" % (len(self._cleardata), len(self._cipherdata), 0)
 
@@ -118,3 +137,5 @@ if __name__ == "__main__":
 #	print("".join(t1.get_charstrings()))
 #	print(len(list(t1.get_charstrings())))
 	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
+	t1.dump("font_dump")
+	print(t1.get_font_bbox())
