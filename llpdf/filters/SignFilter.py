@@ -122,7 +122,6 @@ class SignFilter(PDFFilter):
 		return self._create_object({
 			PDFName("/Type"):			PDFName("/XObject"),
 			PDFName("/Subtype"):		PDFName("/Form"),
-			PDFName("/FormType"):		1,		# ???
 			PDFName("/BBox"):			self._get_signature_bbox(),
 			PDFName("/Resources"):		resources_xref,
 		}, form_data)
