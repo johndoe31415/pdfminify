@@ -20,8 +20,11 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
+import struct
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
+from llpdf.types.PDFObject import PDFObject
+from llpdf.EncodeDecode import EncodedObject
 
 class _T1PRNG(object):
 	_C1 = 52845
@@ -40,9 +43,12 @@ class _T1PRNG(object):
 
 
 class T1Font(object):
-	def __init__(self, cleardata, cipherdata, TODOdata):
+	_PFB_HEADER = struct.Struct("< H L")
+
+	def __init__(self, cleardata, cipherdata, trailerdata):
 		self._cleardata = cleardata
 		self._cipherdata = cipherdata
+		self._trailerdata = trailerdata
 
 	def decrypt(self):
 		decrypted_data = _T1PRNG().decrypt_bytes(self._cipherdata)[4:]
@@ -76,18 +82,39 @@ class T1Font(object):
 
 		cleardata = data[ : length1]
 		cipherdata = data[length1 : length1 + length2]
-		otherdata = data[length1 + length2 : ]
-		return cls(cleardata, cipherdata, otherdata)
+		trailerdata = data[length1 + length2 : ]
+		return cls(cleardata, cipherdata, trailerdata)
+
+	@classmethod
+	def from_pfb_file(cls, filename):
+		with open(filename, "rb") as f:
+			data = [ ]
+			for expect_magic in [ 0x180, 0x280, 0x180]:
+				(magic, length) = cls._PFB_HEADER.unpack(f.read(6))
+				assert(magic == expect_magic)
+				data.append(f.read(length))
+			(cleardata, cipherdata, trailerdata) = data
+		return cls(cleardata, cipherdata, trailerdata)
+
+	def to_fontfile_obj(self, objid):
+		content = {
+			PDFName("/Length1"):	len(self._cleardata),
+			PDFName("/Length2"):	len(self._cipherdata),
+			PDFName("/Length3"):	len(self._trailerdata),
+		}
+		stream = EncodedObject.create(self._cleardata + self._cipherdata + self._trailerdata, compress = True)
+		obj = PDFObject.create(objid, 0, content, stream)
+		return obj
 
 	def __str__(self):
 		return "T1Font<%d, %d, %d>" % (len(self._cleardata), len(self._cipherdata), 0)
 
 if __name__ == "__main__":
-	with open("ff1", "rb") as f1,  open("ff2", "rb") as f2:
-		f1 = f1.read()
-		f2 = f2.read()
-	t1 = T1Font(f1, f2, b"")
-	print(t1)
-	print("".join(t1.get_charstrings()))
-	print(len(list(t1.get_charstrings())))
-
+#	with open("ff1", "rb") as f1,  open("ff2", "rb") as f2:
+#		f1 = f1.read()
+#		f2 = f2.read()
+#	t1 = T1Font(f1, f2, b"")
+#	print(t1)
+#	print("".join(t1.get_charstrings()))
+#	print(len(list(t1.get_charstrings())))
+	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
