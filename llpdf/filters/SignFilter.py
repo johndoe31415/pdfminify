@@ -124,14 +124,16 @@ class SignFilter(PDFFilter):
 			PDFName("/Rect"):		self._get_signature_rect(),
 			PDFName("/T"):			b"Digital Signature",							# Text
 			PDFName("/P"):			annotated_page_xref,							# Indirect reference to page object
-			PDFName("/F"):			AnnotationFlag.Locked | AnnotationFlag.Print,	# Flags
+			PDFName("/F"):			AnnotationFlag.Locked | AnnotationFlag.Print,	# Flags as Acrobat sets them
+#			PDFName("/F"):			AnnotationFlag.Print,							# Flags as PDF-XChange sets them
 			PDFName("/AP"): {														# Appearance dictionary
 				PDFName("/N"): form_xref,
 			},
 			PDFName("/Lock"):		lock_obj_xref,
 			PDFName("/FT"):			PDFName("/Sig"),								# Field type
 			PDFName("/V"):			signature_xref,									# Field value
-			PDFName("/Ff"):			int(FieldFlag.ReadOnly),						# Field characteristics
+#			PDFName("/Ff"):			int(FieldFlag.ReadOnly),						# Field flags as by Acrobat
+			PDFName("/Ff"):			int(FieldFlag.NoExport),						# Field flags as by PDF-XChange
 		})
 
 	def run(self):
@@ -155,7 +157,7 @@ class SignFilter(PDFFilter):
 
 		# TODO: Is this necessary?
 		root_obj.content[PDFName("/AcroForm")] = self._create_object({
-			PDFName("/Fields"):		[ signature_xref ],
+			PDFName("/Fields"):		[ annot_xref ],
 			PDFName("/SigFlags"):	3,
 		})
 
