@@ -77,6 +77,30 @@ class SignFilter(PDFFilter):
 		self._pdf.replace_object(obj)
 		return PDFXRef(objid, 0)
 
+	def _property_dict(self):
+		properties = {
+			PDFName("/App"): {
+				PDFName("/Name"):			PDFName("/PDFMinify"),
+				PDFName("/OS"):				[ PDFName("/Linux") ],
+				PDFName("/R"):				0,	# TODO Changeme
+				PDFName("/REx"):			b"v0.01",	# TODO Changeme
+				PDFName("/TrustedMode"):	False,
+			},
+			PDFName("/Filter"): {
+				PDFName("/Date"):			b"Nov 28 2016 11:12:06",	# TODO Changeme
+				PDFName("/Name"):			PDFName("/OpenSSL"),
+				PDFName("/REx"):			self._get_openssl_version().encode(),
+				PDFName("/R"):				9999,	# TODO Changeme
+				PDFName("/V"):				1,	# TODO What is this?
+			},
+			PDFName("/PubSec"): {
+				PDFName("/Date"):			b"Nov 28 2016 11:12:06",	# TODO Changeme
+				PDFName("/NoEFontNoWarn"):	True,
+				PDFName("/R"):				9999,				# TODO Changeme
+			},
+		}
+		return properties
+
 	def _sign_pdf(self):
 		placeholder_signature = self._do_sign(b"")
 		self._sig_length_bytes = len(placeholder_signature)
@@ -87,6 +111,7 @@ class SignFilter(PDFFilter):
 			PDFName("/ByteRange"):		MarkerObject("sig_byterange", raw = "[ " + (" " * (4 * 10)) + "  "),
 			PDFName("/Contents"):		MarkerObject("sig_contents", child = placeholder_signature),
 			PDFName("/M"):				Timestamp.localnow().format_pdf().encode("ascii"),
+			PDFName("/Prop_Build"):		self._property_dict(),
 		}
 		if self._args.signer is not None:
 			content[PDFName("/Name")] = self._args.signer.encode("latin1")
@@ -119,21 +144,19 @@ class SignFilter(PDFFilter):
 
 	def _generate_signature_annotation(self, signature_xref, form_xref, lock_obj_xref, annotated_page_xref):
 		return self._create_object({
-			PDFName("/Type"):		PDFName("/Annot"),
-			PDFName("/Subtype"):	PDFName("/Widget"),
-			PDFName("/Rect"):		self._get_signature_rect(),
-			PDFName("/T"):			b"Digital Signature",							# Text
-			PDFName("/P"):			annotated_page_xref,							# Indirect reference to page object
-			PDFName("/F"):			AnnotationFlag.Locked | AnnotationFlag.Print,	# Flags as Acrobat sets them
-#			PDFName("/F"):			AnnotationFlag.Print,							# Flags as PDF-XChange sets them
+			PDFName("/Type"):			PDFName("/Annot"),
+			PDFName("/Subtype"):		PDFName("/Widget"),
+			PDFName("/Rect"):			self._get_signature_rect(),
+			PDFName("/T"):				b"Digital Signature",							# Text
+			PDFName("/P"):				annotated_page_xref,							# Indirect reference to page object
+			PDFName("/F"):				AnnotationFlag.Locked | AnnotationFlag.Print,	# Flags as Acrobat sets them ("Locked" is required or annotation won't show up)
 			PDFName("/AP"): {														# Appearance dictionary
 				PDFName("/N"): form_xref,
 			},
-			PDFName("/Lock"):		lock_obj_xref,
-			PDFName("/FT"):			PDFName("/Sig"),								# Field type
-			PDFName("/V"):			signature_xref,									# Field value
-#			PDFName("/Ff"):			int(FieldFlag.ReadOnly),						# Field flags as by Acrobat
-			PDFName("/Ff"):			int(FieldFlag.NoExport),						# Field flags as by PDF-XChange
+			PDFName("/Lock"):			lock_obj_xref,
+			PDFName("/FT"):				PDFName("/Sig"),								# Field type
+			PDFName("/V"):				signature_xref,									# Field value
+			PDFName("/Ff"):				int(FieldFlag.NoExport),						# Field flags as by PDF-XChange (When setting "ReadOnly", it doesn't work in X-Change)
 		})
 
 	def run(self):
