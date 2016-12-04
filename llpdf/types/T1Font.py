@@ -206,7 +206,7 @@ class T1Interpreter(object):
 					self._log.error("T1 font code referenced subroutine %s, but no such subroutine known. Ignoring.", cmd)
 				else:
 					self.run(subr.parse())
-		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem ]:
+		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem, T1CommandCode.vstem3, T1CommandCode.hstem3, T1CommandCode.dotsection ]:
 			# Hint commands, ignore
 			pass
 		elif cmd.cmdcode == T1CommandCode.seac:
@@ -218,7 +218,7 @@ class T1Interpreter(object):
 			if self._canvas is not None:
 				self._canvas.line(self._pos, self._path[0])
 			self._path = [ ]
-		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn ]:
+		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn, T1CommandCode.div ]:
 			return
 		else:
 			raise Exception(NotImplemented, cmd)
@@ -419,7 +419,6 @@ if __name__ == "__main__":
 		canvas = NaiveDebuggingCanvas()
 		commands = glyph.interpret(canvas = canvas, parent_font = t1)
 		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
-		break
 
 	#for (name, glyph) in sorted(t1.charset.items()):
 	#	print(name)
