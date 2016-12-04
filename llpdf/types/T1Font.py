@@ -21,11 +21,13 @@
 #
 
 import re
+import enum
 import struct
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
 from llpdf.EncodeDecode import EncodedObject
+from llpdf.img.PnmPicture import PnmPicture
 
 class _T1PRNG(object):
 	_C1 = 52845
@@ -42,9 +44,193 @@ class _T1PRNG(object):
 	def decrypt_bytes(self, data):
 		return bytes(self.decrypt_byte(cipher) for cipher in data)[4:]
 
+class T1CommandCode(enum.IntEnum):
+	hstem = 1
+	vstem = 3
+	vmoveto = 4
+	rlineto = 5
+	hlineto = 6
+	vlineto = 7
+	rrcurveto = 8
+	closepath = 9
+	callsubr = 10
+	retrn = 11
+	escape = 12
+	hsbw = 13
+	endchar = 14
+	rmoveto = 21
+	hmoveto = 22
+	vhcurveto = 30
+	hvcurveto = 31
+
+	dotsection = (escape << 8) | 0
+	vstem3 = (escape << 8) | 1
+	hstem3 = (escape << 8) | 2
+	seac = (escape << 8) | 6
+	sbw = (escape << 8) | 7
+	div = (escape << 8) | 12
+	callothersubr = (escape << 8) | 16
+	pop = (escape << 8) | 17
+	setcurrentpoint = (escape << 8) | 33
+
+class T1Command(object):
+	def __init__(self, cmdcode, *args):
+		self._cmdcode = cmdcode
+		self._args = args
+
+	@property
+	def cmdcode(self):
+		return self._cmdcode
+
+	def __getitem__(self, index):
+		return self._args[index]
+
+	def __iter__(self):
+		return iter(self._args)
+
+	def __repr__(self):
+		return str(self)
+
+	def __str__(self):
+		if len(self._args) == 0:
+			return str(self._cmdcode.name)
+		else:
+			return "%s(%s)" % (self._cmdcode.name, ", ".join(str(arg) for arg in self._args))
+
+class NaiveDebuggingCanvas(object):
+	def __init__(self):
+		self._stepcnt = 100
+		self._image = PnmPicture.new(1000, 1000)
+
+	@property
+	def image(self):
+		return self._image
+
+	def _t_range(self):
+		yield from (x / (self._stepcnt - 1) for x in range(self._stepcnt))
+
+	def _emit(self, x, y):
+		x = round(x / 2) + 500
+		y = round(y / 2) + 500
+		self._image.set_pixel(x, y, (0xff, 0xff, 0xff))
+
+
+	@staticmethod
+	def _cubic_bezier(t, pt1, pt2, pt3, pt4):
+		t2 = t ** 2
+		t3 = t ** 3
+		mt = 1 - t
+		mt2 = mt ** 2
+		mt3 = mt ** 3
+		x = (pt1[0] * mt3) + (3 * pt2[0] * mt2 * t) + (3 * pt3[0] * mt * t2) + (pt4[0] * t3)
+		y = (pt1[1] * mt3) + (3 * pt2[1] * mt2 * t) + (3 * pt3[1] * mt * t2) + (pt4[1] * t3)
+		return (x, y)
+
+	def bezier(self, pt1, pt2, pt3, pt4):
+		print("BEZIER", pt1, pt2, pt3, pt4)
+		for t in self._t_range():
+			(x, y) = self._cubic_bezier(t, pt1, pt2, pt3, pt4)
+			self._emit(x, y)
+
+	def line(self, pt1, pt2):
+		print("LINE", pt1, pt2)
+		for t in self._t_range():
+			mt = 1 - t
+			x = (pt1[0] * t) + (pt2[0] * mt)
+			y = (pt1[1] * t) + (pt2[1] * mt)
+			self._emit(x, y)
+
+
+class T1Interpreter(object):
+	def __init__(self, canvas = None):
+		self._canvas = canvas
+		self._width = 0
+		self._sbx = 0
+		self._pos = [ 0, 0 ]
+
+	def _run_command(self, cmd):
+		if cmd.cmdcode == T1CommandCode.hsbw:
+			# Horizontal sidebearing and width
+			(self._sbx, self._width) = cmd
+		elif cmd.cmdcode in [ T1CommandCode.rmoveto, T1CommandCode.rlineto ]:
+			newpos = [ self._pos[0] + cmd[0], self._pos[1] + cmd[1] ]
+			if cmd.cmdcode == T1CommandCode.rlineto:
+				if self._canvas is not None:
+					self._canvas.line(self._pos, newpos)
+			self._pos = newpos
+		elif cmd.cmdcode == T1CommandCode.rrcurveto:
+			pt1 = [ cmd[0], cmd[1] ]
+			pt2 = [ pt1[0] + cmd[2], pt1[1] + cmd[3] ]
+			pt3 = [ pt2[0] + cmd[4], pt2[1] + cmd[4] ]
+			if self._canvas is not None:
+				self._canvas.bezier(self._pos, pt1, pt2, pt3)
+			self._pos = pt3
+		elif cmd.cmdcode == T1CommandCode.hlineto:
+			self._run_command(T1Command(T1CommandCode.rlineto, cmd[0], 0))
+		elif cmd.cmdcode == T1CommandCode.vlineto:
+			self._run_command(T1Command(T1CommandCode.rlineto, 0, cmd[0]))
+		elif cmd.cmdcode == T1CommandCode.hvcurveto:
+			self._run_command(T1Command(T1CommandCode.rrcurveto, cmd[0], 0, cmd[1], cmd[2], 0, cmd[3]))
+		elif cmd.cmdcode == T1CommandCode.vhcurveto:
+			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
+		elif cmd.cmdcode == T1CommandCode.closepath:
+			pass
+		elif cmd.cmdcode == T1CommandCode.endchar:
+			return
+		else:
+			raise Exception(NotImplemented, cmd)
+
+	def run(self, commands):
+		for command in commands:
+			self._run_command(command)
+
 class T1Glyph(object):
 	def __init__(self, glyph_data):
 		self._data = glyph_data
+
+	def parse(self):
+		stack = [ ]
+		commands = [ ]
+		index = 0
+		#print(self._data.hex())
+		while index < len(self._data):
+			v = self._data[index]
+			#print("Next %02x at %d" % (v, index))
+			if 0 <= v < 32:
+				# Command!
+				if v == T1CommandCode.escape:
+					w = self._data[index + 1]
+					index += 1
+					v = (v << 8) | w
+				cmdcode = T1CommandCode(v)
+				commands.append(T1Command(cmdcode, *stack))
+				stack = [ ]
+			elif 32 <= v <= 246:
+				stack.append(v - 139)
+			elif 247 <= v <= 250:
+				w = self._data[index + 1]
+				index += 1
+				stack.append(((v - 247) * 256) + w + 108)
+			elif 251 <= v <= 254:
+				w = self._data[index + 1]
+				index += 1
+				stack.append(-(((v - 251) * 256) + w + 108))
+			elif v == 255:
+				value = self._data[index + 1 : index + 5]
+				value = int.from_bytes(value, byteorder = "big", signed = True)
+				stack.append(value)
+				index += 4
+			index += 1
+		return commands
+
+	def interpret(self, canvas = None):
+		interpreter = T1Interpreter(canvas = canvas)
+		interpreter.run(self.parse())
+		return interpreter
+
+	@property
+	def data(self):
+		return self._data
 
 	def __repr__(self):
 		return str(self)
@@ -165,4 +351,17 @@ if __name__ == "__main__":
 	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
 	t1.dump("font_dump")
 	print(t1.charset_string)
-	print(t1.charset)
+
+
+	canvas = NaiveDebuggingCanvas()
+	commands = t1.charset["/OE"].interpret(canvas = canvas)
+	canvas.image.write_file("out.pnm")
+
+
+	#for (name, glyph) in sorted(t1.charset.items()):
+	#	print(name)
+	#	print(glyph.parse())
+	#	print()
+	#	print()
+	#	print()
+

@@ -62,6 +62,13 @@ class PnmPicture(object):
 		if expected_size != len(self._data):
 			raise Exception("Expected %d bytes of data for a %d x %d image (type %s). Got %d bytes instead." % (expected_size, self._width, self._height, self._img_format.name, len(data)))
 
+	@classmethod
+	def new(cls, width, height):
+		pixelcnt = width * height
+		bytelen = 3 * pixelcnt
+		data = bytearray(bytelen)
+		return cls(width, height, data, PnmPictureFormat.Pixmap)
+
 	def clone(self):
 		return PnmPicture(self.width, self.height, bytearray(self.data), self.img_format)
 
@@ -162,6 +169,13 @@ class PnmPicture(object):
 					raw_data[i] = int(f.readline())
 			# TODO: This will fail for ASCII Bitmaps
 			return cls(width = width, height = height, data = raw_data, img_format = img_format)
+
+	@property
+	def bytes_per_pixel(self):
+		# TODO: ONLY WORKS FOR PIXMAPS.
+		# FIXME: THIS IS A HORRIBLE CLUSTERFUCK OF A HACKJOB. FIX ME, YOU LAZY BUM!
+		assert(self.img_format == PnmPictureFormat.Pixmap)
+		return 3
 
 	def _getoffset(self, x, y):
 		assert(0 <= x < self.width)
