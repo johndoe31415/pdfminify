@@ -23,6 +23,7 @@
 import re
 import enum
 import struct
+import logging
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
@@ -143,8 +144,11 @@ class NaiveDebuggingCanvas(object):
 
 
 class T1Interpreter(object):
-	def __init__(self, canvas = None):
+	_log = logging.getLogger("llpdf.types.T1Font.T1Interpreter")
+
+	def __init__(self, canvas = None, parent_font = None):
 		self._canvas = canvas
+		self._parent_font = parent_font
 		self._width = [ ]
 		self._left_sidebearing = [ 0, 0 ]
 		self._pos = [ 0, 0 ]
@@ -190,6 +194,14 @@ class T1Interpreter(object):
 			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
 		elif cmd.cmdcode == T1CommandCode.callsubr:
 			print("TODO NotImplemented: Subroutine call", cmd)
+			if self._parent_font is None:
+				self._log.error("Unable to call subroutine %s without parent.", cmd)
+			else:
+				subr = self._parent_font.get_subroutine(cmd[0])
+				if subr is None:
+					self._log.error("T1 font code referenced subroutine %s, but no such subroutine known. Ignoring.", cmd)
+				else:
+					self.run(subr.parse())
 		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem ]:
 			# Hint commands, ignore
 			pass
@@ -202,7 +214,7 @@ class T1Interpreter(object):
 			if self._canvas is not None:
 				self._canvas.line(self._pos, self._path[0])
 			self._path = [ ]
-		elif cmd.cmdcode == T1CommandCode.endchar:
+		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn ]:
 			return
 		else:
 			raise Exception(NotImplemented, cmd)
@@ -250,8 +262,8 @@ class T1Glyph(object):
 			index += 1
 		return commands
 
-	def interpret(self, canvas = None):
-		interpreter = T1Interpreter(canvas = canvas)
+	def interpret(self, canvas = None, parent_font = None):
+		interpreter = T1Interpreter(canvas = canvas, parent_font = parent_font)
 		interpreter.run(self.parse())
 		return interpreter
 
@@ -276,6 +288,7 @@ class T1Font(object):
 		self._cipherdata = cipherdata
 		self._trailerdata = trailerdata
 		self._charset = None
+		self._subroutines = None
 
 	def _decrypt_cipherdata(self):
 		decrypted_data = _T1PRNG(self._T1_FONT_KEY).decrypt_bytes(self._cipherdata)
@@ -292,14 +305,12 @@ class T1Font(object):
 		return "".join(sorted(self.charset.keys())).encode("ascii")
 
 	@classmethod
-	def _parse_font_data(cls, data):
+	def _parse_glyphs(cls, data):
 		glyphs = { }
-		idx = data.index(b"/CharStrings")
-		strm = StreamRepr(data[idx:])
-
+		strm = StreamRepr(data[data.index(b"/CharStrings") : ])
 		header = strm.read_n_tokens(5)
-		char_count = int(header[1].decode("ascii"))
-		for i in range(char_count):
+		glyph_count = int(header[1].decode("ascii"))
+		for i in range(glyph_count):
 			definition = strm.read_n_tokens(3)
 			name = definition[0].decode("ascii")
 			length = int(definition[1].decode("ascii"))
@@ -311,6 +322,25 @@ class T1Font(object):
 				glyphs[name] = glyph
 		return glyphs
 
+	@classmethod
+	def _parse_subroutines(cls, data):
+		subroutines = { }
+		strm = StreamRepr(data[data.index(b"/Subrs") : ])
+		header = strm.read_n_tokens(3)
+		subroutine_count = int(header[1].decode("ascii"))
+		for i in range(subroutine_count):
+			(dup, subroutine_id, subroutine_length, start_subr_marker) = strm.read_n_tokens(4)
+			subroutine_id = int(subroutine_id)
+			subroutine_length = int(subroutine_length)
+			encoded_subroutine_data = strm.read(subroutine_length)
+			decoded_subroutine_data = _T1PRNG(cls._T1_GLYPH_KEY).decrypt_bytes(encoded_subroutine_data)
+			subroutines[subroutine_id] = T1Glyph(decoded_subroutine_data)
+			end_subr_marker = strm.read_next_token()
+		return subroutines
+
+	def get_subroutine(self, subroutine_id):
+		return self._subroutines.get(subroutine_id)
+
 	def get_font_bbox(self):
 		cleartext = self._cleardata.decode("ascii")
 		result = self._FONT_BBOX_RE.search(cleartext)
@@ -321,7 +351,8 @@ class T1Font(object):
 
 	def _parse_font(self):
 		decrypted_data = self._decrypt_cipherdata()
-		self._charset = self._parse_font_data(decrypted_data)
+		self._charset = self._parse_glyphs(decrypted_data)
+		self._subroutines = self._parse_subroutines(decrypted_data)
 
 	@classmethod
 	def from_fontfile_obj(cls, fontfile_object):
@@ -382,7 +413,7 @@ if __name__ == "__main__":
 
 	for (charname, glyph) in sorted(t1.charset.items()):
 		canvas = NaiveDebuggingCanvas()
-		commands = glyph.interpret(canvas = canvas)
+		commands = glyph.interpret(canvas = canvas, parent_font = t1)
 		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
 		break
 
