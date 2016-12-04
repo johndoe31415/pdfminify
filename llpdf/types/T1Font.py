@@ -110,10 +110,10 @@ class NaiveDebuggingCanvas(object):
 		yield from (x / (self._stepcnt - 1) for x in range(self._stepcnt))
 
 	def _emit(self, x, y):
-		x = round(x / 2) + 500
-		y = 1499 - (round(y / 2) + 500)
+		(x, y) = (round(x), round(y))
+		x = round((x / 2) + 500)
+		y = 1499 - (round((y / 2) + 500))
 		self._image.set_pixel(x, y, (0xff, 0xff, 0xff))
-
 
 	@staticmethod
 	def _cubic_bezier(t, pt1, pt2, pt3, pt4):
@@ -138,6 +138,7 @@ class NaiveDebuggingCanvas(object):
 			mt = 1 - t
 			x = (pt1[0] * t) + (pt2[0] * mt)
 			y = (pt1[1] * t) + (pt2[1] * mt)
+#			print(y)
 			self._emit(x, y)
 
 
@@ -187,6 +188,11 @@ class T1Interpreter(object):
 			self._run_command(T1Command(T1CommandCode.rrcurveto, cmd[0], 0, cmd[1], cmd[2], 0, cmd[3]))
 		elif cmd.cmdcode == T1CommandCode.vhcurveto:
 			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
+		elif cmd.cmdcode == T1CommandCode.callsubr:
+			print("TODO NotImplemented: Subroutine call", cmd)
+		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem ]:
+			# Hint commands, ignore
+			pass
 		elif cmd.cmdcode == T1CommandCode.seac:
 			accent_sidebearing = cmd[0]
 			(accent_x, accent_y) = (cmd[1], cmd[2])
@@ -369,17 +375,16 @@ if __name__ == "__main__":
 #	print(t1)
 #	print("".join(t1.get_charstrings()))
 #	print(len(list(t1.get_charstrings())))
-	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
+#	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
+	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb")
 	t1.dump("font_dump")
 	print(t1.charset_string)
-
-
 
 	for (charname, glyph) in sorted(t1.charset.items()):
 		canvas = NaiveDebuggingCanvas()
 		commands = glyph.interpret(canvas = canvas)
 		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
-
+		break
 
 	#for (name, glyph) in sorted(t1.charset.items()):
 	#	print(name)
