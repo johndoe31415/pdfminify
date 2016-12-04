@@ -114,9 +114,29 @@ class SignFilter(PDFFilter):
 			content[PDFName("/Reason")] = self._args.sign_reason.encode("latin1")
 		return self._create_object(content)
 
+#	def _get_font_reference(self):
+#		available_fonts = [ ]
+#		for obj in self._pdf:
+#			if obj.getattr(PDFName("/Type")) == PDFName("/Font"):
+#				available_fonts.append(obj)
+#
+#		# TODO: Here we should sort the font array in descending order
+#
+#		if len(available_fonts) == 0:
+#			self._log.error("No font in document, cannot put text in signature field.")
+#			return None
+#		else:
+#			return available_fonts[0].xref
+
+	def _get_font_reference(self):
+		# Load the T1 font first
+		font_pdf = PDFResources(pkgutil.get_data("llpdf.resources", "font.pdf"))
+		mapping = self._pdf.coalesce(font_pdf)
+		return mapping[PDFXRef(9999, 0)]
+
 	def _generate_form(self):
 		form_graphics = PDFResources(pkgutil.get_data("llpdf.resources", "signing_graphics.pdf"))
-		mapping = self._pdf.coalesce(form_graphics)
+		mapping = self._pdf.coalesce(form_graphics, additional_cross_references = { PDFXRef(9998, 0): self._get_font_reference() })
 		resources_xref = mapping[PDFXRef(9999, 0)]
 		form_data = pkgutil.get_data("llpdf.resources", "signing_form.pdf")
 		return self._create_object({
@@ -201,9 +221,6 @@ class SignFilter(PDFFilter):
 			signed_payload += data
 		signature = self._do_sign(signed_payload)
 		hex_signature = signature.hex().encode("ascii")
-
-#		with open("signed_payload.bin", "wb") as f:
-#			f.write(signed_payload)
 
 		# Patch into PDF
 		writer.outfile.seek(writer.serializer.get_mark("sig_contents") + 1)
