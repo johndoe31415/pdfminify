@@ -147,6 +147,7 @@ class T1Interpreter(object):
 		self._width = 0
 		self._sbx = 0
 		self._pos = [ 0, 0 ]
+		self._path = [ ]
 
 	def _run_command(self, cmd):
 		if cmd.cmdcode == T1CommandCode.hsbw:
@@ -158,6 +159,7 @@ class T1Interpreter(object):
 				if self._canvas is not None:
 					self._canvas.line(self._pos, newpos)
 			self._pos = newpos
+			self._path.append(self._pos)
 		elif cmd.cmdcode == T1CommandCode.rrcurveto:
 			pt1 = [ self._pos[0] + cmd[0], self._pos[1] + cmd[1] ]
 			pt2 = [ pt1[0] + cmd[2], pt1[1] + cmd[3] ]
@@ -165,6 +167,7 @@ class T1Interpreter(object):
 			if self._canvas is not None:
 				self._canvas.bezier(self._pos, pt1, pt2, pt3)
 			self._pos = pt3
+			self._path.append(self._pos)
 		elif cmd.cmdcode == T1CommandCode.hlineto:
 			self._run_command(T1Command(T1CommandCode.rlineto, cmd[0], 0))
 		elif cmd.cmdcode == T1CommandCode.vlineto:
@@ -174,7 +177,8 @@ class T1Interpreter(object):
 		elif cmd.cmdcode == T1CommandCode.vhcurveto:
 			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
 		elif cmd.cmdcode == T1CommandCode.closepath:
-			pass
+			self._canvas.line(self._pos, self._path[0])
+			self._path = [ ]
 		elif cmd.cmdcode == T1CommandCode.endchar:
 			return
 		else:
@@ -354,7 +358,7 @@ if __name__ == "__main__":
 
 
 	canvas = NaiveDebuggingCanvas()
-	commands = t1.charset["/Q"].interpret(canvas = canvas)
+	commands = t1.charset["/OE"].interpret(canvas = canvas)
 	canvas.image.write_file("out.pnm")
 
 
