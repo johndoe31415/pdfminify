@@ -168,8 +168,7 @@ class PDFAFilter(PDFFilter):
 						# Update Type1 font descriptors with missing CharSet entries
 						font_file_obj = self._pdf.lookup(font_descriptor_obj.content[PDFName("/FontFile")])
 						t1_font = T1Font.from_fontfile_obj(font_file_obj)
-						charset = t1_font.get_charset()
-						font_descriptor_obj.content[PDFName("/CharSet")] = charset
+						font_descriptor_obj.content[PDFName("/CharSet")] = t1_font.charset_string
 					elif font_obj.getattr(PDFName("/Subtype")) == PDFName("/CIDFontType2"):
 						# Type2 font descriptors need to have a CIDSet
 						glyph_count = self.type2_font_glyph_count(font_obj.content[PDFName("/W")])

@@ -31,7 +31,7 @@ class _T1PRNG(object):
 	_C1 = 52845
 	_C2 = 22719
 
-	def __init__(self, r = 55665):
+	def __init__(self, r):
 		self._r = r & 0xffff
 
 	def decrypt_byte(self, cipher):
@@ -42,6 +42,15 @@ class _T1PRNG(object):
 	def decrypt_bytes(self, data):
 		return bytes(self.decrypt_byte(cipher) for cipher in data)[4:]
 
+class T1Glyph(object):
+	def __init__(self, glyph_data):
+		self._data = glyph_data
+
+	def __repr__(self):
+		return str(self)
+
+	def __str__(self):
+		return "Glyph<%d bytes>" % (len(self._data))
 
 class T1Font(object):
 	_T1_FONT_KEY = 55665
@@ -53,13 +62,25 @@ class T1Font(object):
 		self._cleardata = cleardata
 		self._cipherdata = cipherdata
 		self._trailerdata = trailerdata
+		self._charset = None
 
-	def decrypt(self):
-		decrypted_data = _T1PRNG().decrypt_bytes(self._cipherdata)
+	def _decrypt_cipherdata(self):
+		decrypted_data = _T1PRNG(self._T1_FONT_KEY).decrypt_bytes(self._cipherdata)
 		return decrypted_data
 
-	def get_charstrings(self):
-		data = self.decrypt()
+	@property
+	def charset(self):
+		if self._charset is None:
+			self._parse_font()
+		return self._charset
+
+	@property
+	def charset_string(self):
+		return "".join(sorted(self.charset.keys())).encode("ascii")
+
+	@classmethod
+	def _parse_font_data(cls, data):
+		glyphs = { }
 		idx = data.index(b"/CharStrings")
 		strm = StreamRepr(data[idx:])
 
@@ -70,14 +91,24 @@ class T1Font(object):
 			name = definition[0].decode("ascii")
 			length = int(definition[1].decode("ascii"))
 			encoded_glyph_data = strm.read(length)
-#			print(_T1PRNG(4330).decrypt_bytes(strm.read(length)))
-#			strm.advance(length)
+			decoded_glyph_data = _T1PRNG(cls._T1_GLYPH_KEY).decrypt_bytes(encoded_glyph_data)
+			glyph = T1Glyph(decoded_glyph_data)
 			strm.read_next_token()
 			if name != "/.notdef":
-				yield name
+				glyphs[name] = glyph
+		return glyphs
 
-	def get_charset(self):
-		return "".join(self.get_charstrings()).encode("ascii")
+	def get_font_bbox(self):
+		cleartext = self._cleardata.decode("ascii")
+		result = self._FONT_BBOX_RE.search(cleartext)
+		if result is None:
+			raise Exception("/FontBBox not found in clear text data of T1 font.")
+		result = result.groupdict()
+		return [ int(result["v1"]), int(result["v2"]), int(result["v3"]), int(result["v4"]) ]
+
+	def _parse_font(self):
+		decrypted_data = self._decrypt_cipherdata()
+		self._charset = self._parse_font_data(decrypted_data)
 
 	@classmethod
 	def from_fontfile_obj(cls, fontfile_object):
@@ -116,17 +147,9 @@ class T1Font(object):
 		with open(filename_prefix + "1", "wb") as f:
 			f.write(self._cleardata)
 		with open(filename_prefix + "2", "wb") as f:
-			f.write(self.decrypt())
+			f.write(self._decrypt_cipherdata())
 		with open(filename_prefix + "3", "wb") as f:
 			f.write(self._trailerdata)
-
-	def get_font_bbox(self):
-		cleartext = self._cleardata.decode("ascii")
-		result = self._FONT_BBOX_RE.search(cleartext)
-		if result is None:
-			raise Exception("/FontBBox not found in clear text data of T1 font.")
-		result = result.groupdict()
-		return [ int(result["v1"]), int(result["v2"]), int(result["v3"]), int(result["v4"]) ]
 
 	def __str__(self):
 		return "T1Font<%d, %d, %d>" % (len(self._cleardata), len(self._cipherdata), 0)
@@ -141,5 +164,5 @@ if __name__ == "__main__":
 #	print(len(list(t1.get_charstrings())))
 	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
 	t1.dump("font_dump")
-	print(t1.get_font_bbox())
-	print(list(t1.get_charstrings()))
+	print(t1.charset_string)
+	print(t1.charset)
