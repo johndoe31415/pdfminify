@@ -144,15 +144,22 @@ class NaiveDebuggingCanvas(object):
 class T1Interpreter(object):
 	def __init__(self, canvas = None):
 		self._canvas = canvas
-		self._width = 0
-		self._sbx = 0
+		self._width = [ ]
+		self._left_sidebearing = [ 0, 0 ]
 		self._pos = [ 0, 0 ]
 		self._path = [ ]
 
 	def _run_command(self, cmd):
 		if cmd.cmdcode == T1CommandCode.hsbw:
 			# Horizontal sidebearing and width
-			(self._sbx, self._width) = cmd
+			self._left_sidebearing = [ cmd[0], 0 ]
+			self._width = [ cmd[1], 0 ]
+			self._pos = [ cmd[0], 0 ]
+		elif cmd.cmdcode == T1CommandCode.sbw:
+			# Sidebearing and width
+			self._left_sidebearing = [ cmd[0], cmd[1] ]
+			self._width = [ cmd[2], cmd[3] ]
+			self._pos = [ cmd[0], cmd[1] ]
 		elif cmd.cmdcode in [ T1CommandCode.rmoveto, T1CommandCode.rlineto ]:
 			newpos = [ self._pos[0] + cmd[0], self._pos[1] + cmd[1] ]
 			if cmd.cmdcode == T1CommandCode.rlineto:
@@ -168,6 +175,10 @@ class T1Interpreter(object):
 				self._canvas.bezier(self._pos, pt1, pt2, pt3)
 			self._pos = pt3
 			self._path.append(self._pos)
+		elif cmd.cmdcode == T1CommandCode.hmoveto:
+			self._run_command(T1Command(T1CommandCode.rmoveto, cmd[0], 0))
+		elif cmd.cmdcode == T1CommandCode.vmoveto:
+			self._run_command(T1Command(T1CommandCode.rmoveto, 0, cmd[0]))
 		elif cmd.cmdcode == T1CommandCode.hlineto:
 			self._run_command(T1Command(T1CommandCode.rlineto, cmd[0], 0))
 		elif cmd.cmdcode == T1CommandCode.vlineto:
@@ -176,8 +187,14 @@ class T1Interpreter(object):
 			self._run_command(T1Command(T1CommandCode.rrcurveto, cmd[0], 0, cmd[1], cmd[2], 0, cmd[3]))
 		elif cmd.cmdcode == T1CommandCode.vhcurveto:
 			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
+		elif cmd.cmdcode == T1CommandCode.seac:
+			accent_sidebearing = cmd[0]
+			(accent_x, accent_y) = (cmd[1], cmd[2])
+			(bchar, achar) = (cmd[3], cmd[4])
+#			print("ACCENT", achar, bchar)
 		elif cmd.cmdcode == T1CommandCode.closepath:
-			self._canvas.line(self._pos, self._path[0])
+			if self._canvas is not None:
+				self._canvas.line(self._pos, self._path[0])
 			self._path = [ ]
 		elif cmd.cmdcode == T1CommandCode.endchar:
 			return
@@ -357,9 +374,11 @@ if __name__ == "__main__":
 	print(t1.charset_string)
 
 
-	canvas = NaiveDebuggingCanvas()
-	commands = t1.charset["/OE"].interpret(canvas = canvas)
-	canvas.image.write_file("out.pnm")
+
+	for (charname, glyph) in sorted(t1.charset.items()):
+		canvas = NaiveDebuggingCanvas()
+		commands = glyph.interpret(canvas = canvas)
+		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
 
 
 	#for (name, glyph) in sorted(t1.charset.items()):
