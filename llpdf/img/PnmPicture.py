@@ -66,7 +66,7 @@ class PnmPicture(object):
 	def new(cls, width, height):
 		pixelcnt = width * height
 		bytelen = 3 * pixelcnt
-		data = bytearray(bytelen)
+		data = bytearray([ 0xff ]) * bytelen
 		return cls(width, height, data, PnmPictureFormat.Pixmap)
 
 	def clone(self):

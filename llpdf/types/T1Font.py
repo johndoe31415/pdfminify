@@ -99,22 +99,28 @@ class T1Command(object):
 			return "%s(%s)" % (self._cmdcode.name, ", ".join(str(arg) for arg in self._args))
 
 class NaiveDebuggingCanvas(object):
+	_STEP_COUNT = 100
+	_SCALE_FACTOR = 7
+	_OFFSET_X = round(1000 / _SCALE_FACTOR)
+	_OFFSET_Y = round(1000 / _SCALE_FACTOR)
+	_WIDTH = round(2.5 * _OFFSET_X)
+	_HEIGHT = round(2.5 * _OFFSET_Y)
+
 	def __init__(self):
-		self._stepcnt = 100
-		self._image = PnmPicture.new(1500, 1500)
+		self._image = PnmPicture.new(self._WIDTH, self._HEIGHT)
 
 	@property
 	def image(self):
 		return self._image
 
 	def _t_range(self):
-		yield from (x / (self._stepcnt - 1) for x in range(self._stepcnt))
+		yield from (x / (self._STEP_COUNT - 1) for x in range(self._STEP_COUNT))
 
 	def _emit(self, x, y):
 		(x, y) = (round(x), round(y))
-		x = round((x / 2) + 500)
-		y = 1499 - (round((y / 2) + 500))
-		self._image.set_pixel(x, y, (0xff, 0xff, 0xff))
+		x = round((x / self._SCALE_FACTOR) + self._OFFSET_X)
+		y = self._HEIGHT - 1 - (round((y / self._SCALE_FACTOR) + self._OFFSET_Y))
+		self._image.set_pixel(x, y, (0, 0, 0))
 
 	@staticmethod
 	def _cubic_bezier(t, pt1, pt2, pt3, pt4):
@@ -139,7 +145,6 @@ class NaiveDebuggingCanvas(object):
 			mt = 1 - t
 			x = (pt1[0] * t) + (pt2[0] * mt)
 			y = (pt1[1] * t) + (pt2[1] * mt)
-#			print(y)
 			self._emit(x, y)
 
 
@@ -193,7 +198,6 @@ class T1Interpreter(object):
 		elif cmd.cmdcode == T1CommandCode.vhcurveto:
 			self._run_command(T1Command(T1CommandCode.rrcurveto, 0, cmd[0], cmd[1], cmd[2], cmd[3], 0))
 		elif cmd.cmdcode == T1CommandCode.callsubr:
-			print("TODO NotImplemented: Subroutine call", cmd)
 			if self._parent_font is None:
 				self._log.error("Unable to call subroutine %s without parent.", cmd)
 			else:
