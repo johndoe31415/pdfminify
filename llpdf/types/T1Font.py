@@ -100,7 +100,7 @@ class T1Command(object):
 class NaiveDebuggingCanvas(object):
 	def __init__(self):
 		self._stepcnt = 100
-		self._image = PnmPicture.new(1000, 1000)
+		self._image = PnmPicture.new(1500, 1500)
 
 	@property
 	def image(self):
@@ -111,7 +111,7 @@ class NaiveDebuggingCanvas(object):
 
 	def _emit(self, x, y):
 		x = round(x / 2) + 500
-		y = round(y / 2) + 500
+		y = 1499 - (round(y / 2) + 500)
 		self._image.set_pixel(x, y, (0xff, 0xff, 0xff))
 
 
@@ -159,9 +159,9 @@ class T1Interpreter(object):
 					self._canvas.line(self._pos, newpos)
 			self._pos = newpos
 		elif cmd.cmdcode == T1CommandCode.rrcurveto:
-			pt1 = [ cmd[0], cmd[1] ]
+			pt1 = [ self._pos[0] + cmd[0], self._pos[1] + cmd[1] ]
 			pt2 = [ pt1[0] + cmd[2], pt1[1] + cmd[3] ]
-			pt3 = [ pt2[0] + cmd[4], pt2[1] + cmd[4] ]
+			pt3 = [ pt2[0] + cmd[4], pt2[1] + cmd[5] ]
 			if self._canvas is not None:
 				self._canvas.bezier(self._pos, pt1, pt2, pt3)
 			self._pos = pt3
@@ -354,7 +354,7 @@ if __name__ == "__main__":
 
 
 	canvas = NaiveDebuggingCanvas()
-	commands = t1.charset["/OE"].interpret(canvas = canvas)
+	commands = t1.charset["/Q"].interpret(canvas = canvas)
 	canvas.image.write_file("out.pnm")
 
 
