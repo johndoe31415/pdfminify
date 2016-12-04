@@ -134,13 +134,13 @@ class NaiveDebuggingCanvas(object):
 		return (x, y)
 
 	def bezier(self, pt1, pt2, pt3, pt4):
-		print("BEZIER", pt1, pt2, pt3, pt4)
+#		print("BEZIER", pt1, pt2, pt3, pt4)
 		for t in self._t_range():
 			(x, y) = self._cubic_bezier(t, pt1, pt2, pt3, pt4)
 			self._emit(x, y)
 
 	def line(self, pt1, pt2):
-		print("LINE", pt1, pt2)
+#		print("LINE", pt1, pt2)
 		for t in self._t_range():
 			mt = 1 - t
 			x = (pt1[0] * t) + (pt2[0] * mt)
@@ -213,7 +213,14 @@ class T1Interpreter(object):
 			accent_sidebearing = cmd[0]
 			(accent_x, accent_y) = (cmd[1], cmd[2])
 			(bchar, achar) = (cmd[3], cmd[4])
-#			print("ACCENT", achar, bchar)
+			if self._parent_font is None:
+				self._log.error("Unable to set accent %s without parent.", cmd)
+			else:
+				glyph = self._parent_font.get_glyph(bchar)
+				accent = self._parent_font.get_glyph(achar)
+				self.run(glyph.parse())
+				self._pos = [ accent_x, accent_y ]
+				self.run(accent.parse())
 		elif cmd.cmdcode == T1CommandCode.closepath:
 			if self._canvas is not None:
 				self._canvas.line(self._pos, self._path[0])
@@ -293,6 +300,7 @@ class T1Font(object):
 		self._trailerdata = trailerdata
 		self._charset = None
 		self._subroutines = None
+		self._numeric_glyph_map = { }
 
 	def _decrypt_cipherdata(self):
 		decrypted_data = _T1PRNG(self._T1_FONT_KEY).decrypt_bytes(self._cipherdata)
@@ -311,6 +319,7 @@ class T1Font(object):
 	@classmethod
 	def _parse_glyphs(cls, data):
 		glyphs = { }
+		numeric_glyph_map = { }
 		strm = StreamRepr(data[data.index(b"/CharStrings") : ])
 		header = strm.read_n_tokens(5)
 		glyph_count = int(header[1].decode("ascii"))
@@ -324,7 +333,8 @@ class T1Font(object):
 			strm.read_next_token()
 			if name != "/.notdef":
 				glyphs[name] = glyph
-		return glyphs
+				numeric_glyph_map[i] = name
+		return (glyphs, numeric_glyph_map)
 
 	@classmethod
 	def _parse_subroutines(cls, data):
@@ -345,6 +355,10 @@ class T1Font(object):
 	def get_subroutine(self, subroutine_id):
 		return self._subroutines.get(subroutine_id)
 
+	def get_glyph(self, numeric_glyph_id):
+		name = self._numeric_glyph_map[numeric_glyph_id]
+		return self.charset[name]
+
 	def get_font_bbox(self):
 		cleartext = self._cleardata.decode("ascii")
 		result = self._FONT_BBOX_RE.search(cleartext)
@@ -355,7 +369,7 @@ class T1Font(object):
 
 	def _parse_font(self):
 		decrypted_data = self._decrypt_cipherdata()
-		self._charset = self._parse_glyphs(decrypted_data)
+		(self._charset, self._numeric_glyph_map) = self._parse_glyphs(decrypted_data)
 		self._subroutines = self._parse_subroutines(decrypted_data)
 
 	@classmethod
