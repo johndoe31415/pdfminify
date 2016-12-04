@@ -315,18 +315,21 @@ class PDFFile(object):
 		self._objs[(obj.objid, obj.gennum)] = obj
 		return self
 
-	def coalesce(self, resources):
+	def coalesce(self, resources, additional_cross_references = None):
 		relinker = Relinker(resources)
 		objids = list(self.get_free_objids(len(resources)))
 		for (resource_object, new_objid) in zip(resources, objids):
 			old_xref = resource_object.xref
 			new_xref = PDFXRef(new_objid, 0)
 			relinker.relink(old_xref, new_xref)
+		if additional_cross_references is not None:
+			for (old_xref, new_xref) in additional_cross_references.items():
+				relinker.relink(old_xref, new_xref)
 		relinker.run()
 
 		unresolved = relinker.unresolved_references
 		if len(unresolved) > 0:
-			self._log.warn("Coalescing PDFResources with unresolved cross references %s.", unresolved)
+			self._log.error("Coalescing PDFResources with unresolved cross references %s.", unresolved)
 		for obj in resources:
 			self.replace_object(obj)
 
