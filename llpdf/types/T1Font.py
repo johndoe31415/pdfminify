@@ -40,10 +40,12 @@ class _T1PRNG(object):
 		return plain
 
 	def decrypt_bytes(self, data):
-		return bytes(self.decrypt_byte(cipher) for cipher in data)
+		return bytes(self.decrypt_byte(cipher) for cipher in data)[4:]
 
 
 class T1Font(object):
+	_T1_FONT_KEY = 55665
+	_T1_GLYPH_KEY = 4330
 	_PFB_HEADER = struct.Struct("< H L")
 	_FONT_BBOX_RE = re.compile(r"/FontBBox\s*{(?P<v1>-?\d+)\s+(?P<v2>-?\d+)\s+(?P<v3>-?\d+)\s+(?P<v4>-?\d+)\s*}")
 
@@ -53,7 +55,7 @@ class T1Font(object):
 		self._trailerdata = trailerdata
 
 	def decrypt(self):
-		decrypted_data = _T1PRNG().decrypt_bytes(self._cipherdata)[4:]
+		decrypted_data = _T1PRNG().decrypt_bytes(self._cipherdata)
 		return decrypted_data
 
 	def get_charstrings(self):
@@ -67,7 +69,9 @@ class T1Font(object):
 			definition = strm.read_n_tokens(3)
 			name = definition[0].decode("ascii")
 			length = int(definition[1].decode("ascii"))
-			strm.advance(length)
+			encoded_glyph_data = strm.read(length)
+#			print(_T1PRNG(4330).decrypt_bytes(strm.read(length)))
+#			strm.advance(length)
 			strm.read_next_token()
 			if name != "/.notdef":
 				yield name
@@ -118,7 +122,6 @@ class T1Font(object):
 
 	def get_font_bbox(self):
 		cleartext = self._cleardata.decode("ascii")
-		print(cleartext.replace("\r", "\n"))
 		result = self._FONT_BBOX_RE.search(cleartext)
 		if result is None:
 			raise Exception("/FontBBox not found in clear text data of T1 font.")
@@ -139,3 +142,4 @@ if __name__ == "__main__":
 	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
 	t1.dump("font_dump")
 	print(t1.get_font_bbox())
+	print(list(t1.get_charstrings()))
