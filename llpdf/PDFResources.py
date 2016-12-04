@@ -44,7 +44,8 @@ class PDFResources(object):
 		self._objs[(obj.objid, obj.gennum)] = obj
 
 	def delete_object(self, objid, gennum):
-		del self._objs[(objid, gennum)]
+		if (objid, gennum) in self._objs:
+			del self._objs[(objid, gennum)]
 
 	def __iter__(self):
 		return iter(self._objs.values())
