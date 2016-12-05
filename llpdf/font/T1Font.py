@@ -38,6 +38,7 @@ class T1Font(object):
 	_T1_GLYPH_KEY = 4330
 	_PFB_HEADER = struct.Struct("< H L")
 	_FONT_BBOX_RE = re.compile(r"/FontBBox\s*{(?P<v1>-?\d+)\s+(?P<v2>-?\d+)\s+(?P<v3>-?\d+)\s+(?P<v4>-?\d+)\s*}")
+	_FONT_NAME_RE = re.compile(r"/FontName\s*(?P<name>/[^\s]+)")
 
 	def __init__(self, cleardata, cipherdata, trailerdata):
 		self._cleardata = cleardata
@@ -86,7 +87,6 @@ class T1Font(object):
 		subroutines = { }
 		strm = StreamRepr(data[data.index(b"/Subrs") : ])
 		header = strm.read_n_tokens(3)
-		print(header)
 		subroutine_count = int(header[1].decode("ascii"))
 		for i in range(subroutine_count):
 			(dup, subroutine_id, subroutine_length, start_subr_marker) = strm.read_n_tokens(4)
@@ -114,6 +114,14 @@ class T1Font(object):
 			raise Exception("/FontBBox not found in clear text data of T1 font.")
 		result = result.groupdict()
 		return [ int(result["v1"]), int(result["v2"]), int(result["v3"]), int(result["v4"]) ]
+
+	def get_font_name(self):
+		cleartext = self._cleardata.decode("ascii")
+		result = self._FONT_NAME_RE.search(cleartext)
+		if result is None:
+			raise Exception("/FontName not found in clear text data of T1 font.")
+		result = result.groupdict()
+		return PDFName(result["name"])
 
 	def _parse_font(self):
 		decrypted_data = self._decrypt_cipherdata()
@@ -153,6 +161,23 @@ class T1Font(object):
 		obj = PDFObject.create(objid, 0, content, stream)
 		return obj
 
+	def get_font_descriptor(self, objid, fontfile_xref):
+		bbox = self.get_font_bbox()
+		content = {
+			PDFName("/Type"):			PDFName("/FontDescriptor"),
+			PDFName("/ItalicAngle"):	0,
+			PDFName("/FontFile"):		fontfile_xref,
+			PDFName("/FontName"):		self.get_font_name(),
+			PDFName("/Flags"):			4,		# TODO?
+			PDFName("/FontBBox"):		bbox,
+			PDFName("/Ascent"):			bbox[3],
+			PDFName("/CapHeight"):		bbox[3],
+			PDFName("/Descent"):		bbox[1],
+			PDFName("/CharSet"):		self.charset_string,
+		}
+		obj = PDFObject.create(objid, 0, content)
+		return obj
+
 	def dump(self, filename_prefix):
 		with open(filename_prefix + "1", "wb") as f:
 			f.write(self._cleardata)
@@ -175,8 +200,10 @@ if __name__ == "__main__":
 	t1 = T1Font.from_pfb_file(filename)
 	t1.dump("font_dump")
 
-	for (charname, glyph) in sorted(t1.charset.items()):
-		print(charname)
-		canvas = NaiveDebuggingCanvas()
-		commands = glyph.interpret(canvas = canvas, parent_font = t1)
-		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
+	print(t1.get_font_descriptor(9, None).content)
+
+#	for (charname, glyph) in sorted(t1.charset.items()):
+#		print(charname)
+#		canvas = NaiveDebuggingCanvas()
+#		commands = glyph.interpret(canvas = canvas, parent_font = t1)
+#		canvas.image.write_file("chars/" + charname[1:] + ".pnm")
