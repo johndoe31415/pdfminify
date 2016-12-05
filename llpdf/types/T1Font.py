@@ -46,37 +46,6 @@ class _T1PRNG(object):
 		return bytes(self.decrypt_byte(cipher) for cipher in data)[4:]
 
 class PostScriptStandardCharacterName(enum.IntEnum):
-	controlSTX = 1
-	controlSOT = 2
-	controlETX = 3
-	controlEOT = 4
-	controlENQ = 5
-	controlACK = 6
-	controlBEL = 7
-	controlBS = 8
-	controlHT = 9
-	controlLF = 10
-	controlVT = 11
-	controlFF = 12
-	controlCR = 13
-	controlSO = 14
-	controlSI = 15
-	controlDLE = 16
-	controlDC1 = 17
-	controlDC2 = 18
-	controlDC3 = 19
-	controlDC4 = 20
-	controlNAK = 21
-	controlSYN = 22
-	controlETB = 23
-	controlCAN = 24
-	controlEM = 25
-	controlSUB = 26
-	controlESC = 27
-	controlFS = 28
-	controlGS = 29
-	controlRS = 30
-	controlUS = 31
 	space = 32
 	exclam = 33
 	quotedbl = 34
@@ -84,7 +53,7 @@ class PostScriptStandardCharacterName(enum.IntEnum):
 	dollar = 36
 	percent = 37
 	ampersand = 38
-	quotesingle = 39
+	quoteright = 39
 	parenleft = 40
 	parenright = 41
 	asterisk = 42
@@ -141,7 +110,7 @@ class PostScriptStandardCharacterName(enum.IntEnum):
 	bracketright = 93
 	asciicircum = 94
 	underscore = 95
-	grave = 96
+	quoteleft = 96
 	a = 97
 	b = 98
 	c = 99
@@ -172,103 +141,60 @@ class PostScriptStandardCharacterName(enum.IntEnum):
 	bar = 124
 	braceright = 125
 	asciitilde = 126
-	controlDEL = 127
-	nbspace = 160
 	exclamdown = 161
 	cent = 162
 	sterling = 163
-	currency = 164
+	fraction = 164
 	yen = 165
-	brokenbar = 166
+	florin = 166
 	section = 167
-	dieresis = 168
-	copyright = 169
-	ordfeminine = 170
+	currency = 168
+	quotesingle = 169
+	quotedblleft = 170
 	guillemotleft = 171
-	logicalnot = 172
-	sfthyphen = 173
-	registered = 174
-	macron = 175
-	degree = 176
-	plusminus = 177
-	twosuperior = 178
-	threesuperior = 179
-	acute = 180
-	mu = 181
+	guilsinglleft = 172
+	guilsinglright = 173
+	fi = 174
+	fl = 175
+	endash = 177
+	dagger = 178
+	daggerdbl = 179
+	periodcentered = 180
 	paragraph = 182
-	middot = 183
-	cedilla = 184
-	onesuperior = 185
-	ordmasculine = 186
+	bullet = 183
+	quotesinglbase = 184
+	quotedblbase = 185
+	quotedblright = 186
 	guillemotright = 187
-	onequarter = 188
-	onehalf = 189
-	threequarters = 190
+	ellipsis = 188
+	perthousand = 189
 	questiondown = 191
-	Agrave = 192
-	Aacute = 193
-	Acircumflex = 194
-	Atilde = 195
-	Adieresis = 196
-	Aring = 197
-	AE = 198
-	Ccedilla = 199
-	Egrave = 200
-	Eacute = 201
-	Ecircumflex = 202
-	Edieresis = 203
-	Igrave = 204
-	Iacute = 205
-	Icircumflex = 206
-	Idieresis = 207
-	Eth = 208
-	Ntilde = 209
-	Ograve = 210
-	Oacute = 211
-	Ocircumflex = 212
-	Otilde = 213
-	Odieresis = 214
-	multiply = 215
-	Oslash = 216
-	Ugrave = 217
-	Uacute = 218
-	Ucircumflex = 219
-	Udieresis = 220
-	Yacute = 221
-	Thorn = 222
-	germandbls = 223
-	agrave = 224
-	aacute = 225
-	acircumflex = 226
-	atilde = 227
-	adieresis = 228
-	aring = 229
-	ae = 230
-	ccedilla = 231
-	egrave = 232
-	eacute = 233
-	ecircumflex = 234
-	edieresis = 235
-	igrave = 236
-	iacute = 237
-	icircumflex = 238
-	idieresis = 239
-	eth = 240
-	ntilde = 241
-	ograve = 242
-	oacute = 243
-	ocircumflex = 244
-	otilde = 245
-	odieresis = 246
-	divide = 247
-	oslash = 248
-	ugrave = 249
-	uacute = 250
-	ucircumflex = 251
-	udieresis = 252
-	yacute = 253
-	thorn = 254
-	ydieresis = 255
+	grave = 193
+	acute = 194
+	circumflex = 195
+	tilde = 196
+	macron = 197
+	breve = 198
+	dotaccent = 199
+	dieresis = 200
+	ring = 202
+	cedilla = 203
+	hungarumlaut = 205
+	ogonek = 206
+	caron = 207
+	emdash = 208
+	AE = 225
+	ordfeminine = 227
+	Lslash = 232
+	Oslash = 233
+	OE = 234
+	ordmasculine = 235
+	ae = 241
+	dotlessi = 245
+	lslash = 248
+	oslash = 249
+	oe = 250
+	germandbls = 251
 
 class T1CommandCode(enum.IntEnum):
 	hstem = 1
@@ -373,6 +299,8 @@ class NaiveDebuggingCanvas(object):
 			self._emit(x, y)
 
 
+class T1ExecutionFinishedException(Exception): pass
+
 class T1Interpreter(object):
 	_log = logging.getLogger("llpdf.types.T1Font.T1Interpreter")
 
@@ -381,7 +309,7 @@ class T1Interpreter(object):
 		self._parent_font = parent_font
 		self._width = [ ]
 		self._left_sidebearing = [ 0, 0 ]
-		self._pos = [ 0, 0 ]
+		self._pos = None
 		self._path = [ ]
 
 	def _run_command(self, cmd):
@@ -389,12 +317,14 @@ class T1Interpreter(object):
 			# Horizontal sidebearing and width
 			self._left_sidebearing = [ cmd[0], 0 ]
 			self._width = [ cmd[1], 0 ]
-			self._pos = [ cmd[0], 0 ]
+			if self._pos is None:
+				self._pos = [ cmd[0], 0 ]
 		elif cmd.cmdcode == T1CommandCode.sbw:
 			# Sidebearing and width
 			self._left_sidebearing = [ cmd[0], cmd[1] ]
 			self._width = [ cmd[2], cmd[3] ]
-			self._pos = [ cmd[0], cmd[1] ]
+			if self._pos is None:
+				self._pos = [ cmd[0], cmd[1] ]
 		elif cmd.cmdcode in [ T1CommandCode.rmoveto, T1CommandCode.rlineto ]:
 			newpos = [ self._pos[0] + cmd[0], self._pos[1] + cmd[1] ]
 			if cmd.cmdcode == T1CommandCode.rlineto:
@@ -437,17 +367,15 @@ class T1Interpreter(object):
 		elif cmd.cmdcode == T1CommandCode.seac:
 			accent_sidebearing = cmd[0]
 			(accent_x, accent_y) = (cmd[1], cmd[2])
-			(base_char_code, accented_char_code) = (cmd[3], cmd[4])
+			(base_char_code, accent_char_code) = (cmd[3], cmd[4])
 			base_char = PostScriptStandardCharacterName(base_char_code)
-			accented_char = PostScriptStandardCharacterName(accented_char_code - 1)		# going on a limb
-			print((base_char, accented_char))
+			accent_char = PostScriptStandardCharacterName(accent_char_code)
 			if self._parent_font is None:
 				self._log.error("Unable to set accent %s without parent.", cmd)
 			else:
-				accent_name = "/" + accented_char.name[len(base_char.name):]
-				print("Building", accented_char, "from", base_char, "with", accent_name)
-				base_glyph = self._parent_font.charset["/" + base_char.name]
-				accent_glyph = self._parent_font.charset[accent_name]
+#				print("Adding", accent_char.name, "to", base_char.name, "at", (accent_x, accent_y))
+				base_glyph = self._parent_font.get_glyph(base_char)
+				accent_glyph = self._parent_font.get_glyph(accent_char)
 
 				self.run(base_glyph.parse())
 				self._pos = [ accent_x, accent_y ]
@@ -456,14 +384,21 @@ class T1Interpreter(object):
 			if self._canvas is not None:
 				self._canvas.line(self._pos, self._path[0])
 			self._path = [ ]
-		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn, T1CommandCode.div ]:
-			return
+		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn ]:
+			raise T1ExecutionFinishedException()
+		elif cmd.cmdcode in [  T1CommandCode.div ]:
+			# Not handled at the moment
+			pass
 		else:
 			raise Exception(NotImplemented, cmd)
 
 	def run(self, commands):
-		for command in commands:
-			self._run_command(command)
+		try:
+			for command in commands:
+				self._run_command(command)
+		except T1ExecutionFinishedException:
+			# return or endchar command received
+			pass
 
 class T1Glyph(object):
 	def __init__(self, glyph_data):
@@ -656,16 +591,18 @@ if __name__ == "__main__":
 #	print(t1)
 #	print("".join(t1.get_charstrings()))
 #	print(len(list(t1.get_charstrings())))
+	filename = "/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb"
+	print(filename)
 #	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
-	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb")
+	t1 = T1Font.from_pfb_file(filename)
 	t1.dump("font_dump")
-	print(t1.charset_string)
+#	print(t1.charset_string)
 
 
 #	charname = "/Aacute"
-	charname = "/Adieresis"
-	for glyph in [ t1.charset[charname] ]:
-#	for (charname, glyph) in sorted(t1.charset.items()):
+#	charname = "/Adieresis"
+#	for glyph in [ t1.charset[charname] ]:
+	for (charname, glyph) in sorted(t1.charset.items()):
 		print(charname)
 		canvas = NaiveDebuggingCanvas()
 		commands = glyph.interpret(canvas = canvas, parent_font = t1)
