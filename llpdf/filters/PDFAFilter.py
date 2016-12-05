@@ -29,7 +29,7 @@ from .PDFFilter import PDFFilter
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.Timestamp import Timestamp
-from llpdf.types.T1Font import T1Font
+from llpdf.font.T1Font import T1Font
 from llpdf.EncodeDecode import EncodedObject
 
 class PDFAFilter(PDFFilter):
