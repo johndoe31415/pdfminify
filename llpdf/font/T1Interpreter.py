@@ -81,11 +81,14 @@ class T1Interpreter(object):
 			if self._parent_font is None:
 				self._log.error("Unable to call subroutine %s without parent.", cmd)
 			else:
-				subr = self._parent_font.get_subroutine(cmd[0])
-				if subr is None:
-					self._log.error("T1 font code referenced subroutine %s, but no such subroutine known. Ignoring.", cmd)
+				if len(cmd.args) == 0:
+					self._log.warning("Unable to call indirect subroutine with address from stack as of now.")
 				else:
-					self.run(subr.parse())
+					subr = self._parent_font.get_subroutine(cmd[0])
+					if subr is None:
+						self._log.error("T1 font code referenced subroutine %s, but no such subroutine known. Ignoring.", cmd)
+					else:
+						self.run(subr.parse())
 		elif cmd.cmdcode == T1CommandCode.callothersubr:
 			self._log.warn("Unsupported right now: %s", cmd)
 		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem, T1CommandCode.vstem3, T1CommandCode.hstem3, T1CommandCode.dotsection ]:
@@ -113,7 +116,8 @@ class T1Interpreter(object):
 			self._path = [ ]
 		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn ]:
 			raise _T1ExecutionFinishedException()
-		elif cmd.cmdcode in [  T1CommandCode.div ]:
+		elif cmd.cmdcode in [  T1CommandCode.div, T1CommandCode.pop ]:
+			print(cmd)
 			# Not handled at the moment
 			pass
 		else:

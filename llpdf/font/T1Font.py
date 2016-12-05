@@ -86,6 +86,7 @@ class T1Font(object):
 		subroutines = { }
 		strm = StreamRepr(data[data.index(b"/Subrs") : ])
 		header = strm.read_n_tokens(3)
+		print(header)
 		subroutine_count = int(header[1].decode("ascii"))
 		for i in range(subroutine_count):
 			(dup, subroutine_id, subroutine_length, start_subr_marker) = strm.read_n_tokens(4)
@@ -94,7 +95,9 @@ class T1Font(object):
 			encoded_subroutine_data = strm.read(subroutine_length)
 			decoded_subroutine_data = T1PRNG(cls._T1_GLYPH_KEY).decrypt_bytes(encoded_subroutine_data)
 			subroutines[subroutine_id] = T1Glyph(decoded_subroutine_data)
-			end_subr_marker = strm.read_next_token()
+			end_subr_marker = strm.read_next_token()[0]
+			if end_subr_marker == b"noaccess":
+				end_subr_marker = strm.read_next_token()
 		return subroutines
 
 	def get_subroutine(self, subroutine_id):

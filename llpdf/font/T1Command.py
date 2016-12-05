@@ -60,6 +60,10 @@ class T1Command(object):
 	def cmdcode(self):
 		return self._cmdcode
 
+	@property
+	def args(self):
+		return self._args
+
 	def __getitem__(self, index):
 		return self._args[index]
 

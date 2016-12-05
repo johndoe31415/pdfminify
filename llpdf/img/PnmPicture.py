@@ -210,19 +210,21 @@ class PnmPicture(object):
 		p2 = (int(low_x), int(low_y) + 1)
 		p3 = (int(low_x) + 1, int(low_y) + 1)
 
-		o0 = (1 - abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
-		o1 = (abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
-		o2 = (1 - abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
-		o3 = (abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
+		if (0 <= p0[0] < self.width) and (0 <= p0[1] < self.height):
+			o0 = (1 - abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
+			self.set_pixel(p0[0], p0[1], self._blendpixel(self.get_pixel(p0[0], p0[1]), pixel, o0))
 
-		self.set_pixel(p0[0], p0[1], self._blendpixel(self.get_pixel(p0[0], p0[1]), pixel, o0))
-		self.set_pixel(p1[0], p1[1], self._blendpixel(self.get_pixel(p1[0], p1[1]), pixel, o1))
-		self.set_pixel(p2[0], p2[1], self._blendpixel(self.get_pixel(p2[0], p2[1]), pixel, o2))
-		self.set_pixel(p3[0], p3[1], self._blendpixel(self.get_pixel(p3[0], p3[1]), pixel, o3))
+		if (0 <= p1[0] < self.width) and (0 <= p1[1] < self.height):
+			o1 = (abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
+			self.set_pixel(p1[0], p1[1], self._blendpixel(self.get_pixel(p1[0], p1[1]), pixel, o1))
 
+		if (0 <= p2[0] < self.width) and (0 <= p2[1] < self.height):
+			o2 = (1 - abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
+			self.set_pixel(p2[0], p2[1], self._blendpixel(self.get_pixel(p2[0], p2[1]), pixel, o2))
 
-
-		pass
+		if (0 <= p3[0] < self.width) and (0 <= p3[1] < self.height):
+			o3 = (abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
+			self.set_pixel(p3[0], p3[1], self._blendpixel(self.get_pixel(p3[0], p3[1]), pixel, o3))
 
 	def write_file(self, filename):
 		with open(filename, "wb") as f:
