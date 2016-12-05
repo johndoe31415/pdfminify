@@ -67,6 +67,14 @@ class T1Glyph(object):
 		interpreter.run(self.parse())
 		return interpreter
 
+	def get_width(self):
+		cmds = self.parse()
+		cmd = cmds[0]
+		if cmd.cmdcode == T1CommandCode.hsbw:
+			return cmd[1]
+		else:
+			raise Exception("Do not know how to get width vector from commands:", cmds)
+
 	@property
 	def data(self):
 		return self._data

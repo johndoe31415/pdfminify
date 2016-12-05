@@ -172,3 +172,6 @@ class PostScriptStandardCharacterName(enum.IntEnum):
 	oslash = 249
 	oe = 250
 	germandbls = 251
+
+character_names = {
+}

@@ -32,6 +32,7 @@ from llpdf.font.T1PRNG import T1PRNG
 from llpdf.font.T1Glyph import T1Glyph
 from llpdf.font.T1Canvas import NaiveDebuggingCanvas
 from llpdf.font.T1Interpreter import T1Interpreter
+from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName
 
 class T1Font(object):
 	_T1_FONT_KEY = 55665
@@ -151,7 +152,20 @@ class T1Font(object):
 			(cleardata, cipherdata, trailerdata) = data
 		return cls(cleardata, cipherdata, trailerdata)
 
-	def to_fontfile_obj(self, objid):
+	def get_missing_width(self):
+		return 500
+
+	def get_widths_dict(self):
+		widths = { }
+		for (name, glyph) in self.charset.items():
+			try:
+				code = PostScriptStandardCharacterName[name[1:]]
+				widths[int(code)] = glyph.get_width()
+			except KeyError:
+				pass
+		return widths
+
+	def get_fontfile_object(self, objid):
 		content = {
 			PDFName("/Length1"):	len(self._cleardata),
 			PDFName("/Length2"):	len(self._cipherdata),
@@ -161,7 +175,7 @@ class T1Font(object):
 		obj = PDFObject.create(objid, 0, content, stream)
 		return obj
 
-	def get_font_descriptor(self, objid, fontfile_xref):
+	def get_font_descriptor_object(self, objid, fontfile_xref):
 		bbox = self.get_font_bbox()
 		content = {
 			PDFName("/Type"):			PDFName("/FontDescriptor"),
@@ -174,9 +188,39 @@ class T1Font(object):
 			PDFName("/CapHeight"):		bbox[3],
 			PDFName("/Descent"):		bbox[1],
 			PDFName("/CharSet"):		self.charset_string,
+			PDFName("/MissingWidth"):	self.get_missing_width(),
+			PDFName("/StemV"):			30,		# TODO?
 		}
 		obj = PDFObject.create(objid, 0, content)
 		return obj
+
+	def get_font_object(self, objid, fontdescriptor_xref):
+		widths_dict = self.get_widths_dict()
+		first_char = min(widths_dict.keys())
+		last_char = max(widths_dict.keys())
+		default_width = self.get_missing_width()
+		widths_array = [ widths_dict.get(i, default_width) for i in range(first_char, last_char + 1) ]
+		content = {
+			PDFName("/Type"):			PDFName("/Font"),
+			PDFName("/Subtype"):		PDFName("/Type1"),
+			PDFName("/FirstChar"):		first_char,
+			PDFName("/LastChar"):		last_char,
+			PDFName("/Widths"):			widths_array,
+#			PDFName("/Encoding"):		{
+#				PDFName("/Type"):			PDFName("/Encoding"),
+#				PDFName("/Differences"):	[ 16, PDFName("/quotedblleft"), PDFName("/quotedblright"), 21, PDFName("/endash") ],
+#			},
+			PDFName("/BaseFont"):		self.get_font_name(),
+			PDFName("/FontDescriptor"):	fontdescriptor_xref,
+		}
+		obj = PDFObject.create(objid, 0, content)
+		return obj
+
+	def wrap_text(self, text, line_width):
+		# TODO IMPLEMENT ME
+		return [ text ]
+#		for char in text:
+#			print(ord(char))
 
 	def dump(self, filename_prefix):
 		with open(filename_prefix + "1", "wb") as f:
@@ -200,7 +244,7 @@ if __name__ == "__main__":
 	t1 = T1Font.from_pfb_file(filename)
 	t1.dump("font_dump")
 
-	print(t1.get_font_descriptor(9, None).content)
+	print(t1.get_font_object(9, None).content)
 
 #	for (charname, glyph) in sorted(t1.charset.items()):
 #		print(charname)

@@ -31,6 +31,7 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.MarkerObject import MarkerObject
 from llpdf.EncodeDecode import EncodedObject
+from llpdf.font.T1Font import T1Font
 from llpdf.types.Flags import AnnotationFlag, FieldFlag, SignatureFlag
 from llpdf.types.Timestamp import Timestamp
 from llpdf.Measurements import Measurements
@@ -54,6 +55,14 @@ class SignFilter(PDFFilter):
 	def _get_signature_bbox(self):
 		(posx, posy, width, height) = self._get_signature_extents()
 		return [ 0, 0, width, height ]
+
+	def _get_cert_subject(self, pemcertfile):
+		cmd = [ "openssl", "x509", "-in", pemcertfile, "-noout", "-subject" ]
+		subject = subprocess.check_output(cmd)
+		subject = subject.decode().rstrip("\r\n")
+		assert(subject.startswith("subject= "))
+		subject = subject[10:]
+		return subject
 
 	def _do_sign(self, bin_data):
 		cmd = [ "openssl", "cms", "-sign", "-binary" ]
@@ -114,31 +123,40 @@ class SignFilter(PDFFilter):
 			content[PDFName("/Reason")] = self._args.sign_reason.encode("latin1")
 		return self._create_object(content)
 
-#	def _get_font_reference(self):
-#		available_fonts = [ ]
-#		for obj in self._pdf:
-#			if obj.getattr(PDFName("/Type")) == PDFName("/Font"):
-#				available_fonts.append(obj)
-#
-#		# TODO: Here we should sort the font array in descending order
-#
-#		if len(available_fonts) == 0:
-#			self._log.error("No font in document, cannot put text in signature field.")
-#			return None
-#		else:
-#			return available_fonts[0].xref
-
 	def _get_font_reference(self):
 		# Load the T1 font first
-		font_pdf = PDFResources(pkgutil.get_data("llpdf.resources", "font.pdf"))
-		mapping = self._pdf.coalesce(font_pdf)
-		return mapping[PDFXRef(9999, 0)]
+		#t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb")
+		t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb")
+
+		# Then add the FontFile to the PDF first
+		fontfile = t1.get_fontfile_object(self._pdf.get_free_objid())
+		self._pdf.replace_object(fontfile)
+
+		# Create a font descriptor for that font
+		descriptor = t1.get_font_descriptor_object(self._pdf.get_free_objid(), fontfile.xref)
+		self._pdf.replace_object(descriptor)
+
+		# Then create the font object itself
+		font = t1.get_font_object(self._pdf.get_free_objid(), descriptor.xref)
+		self._pdf.replace_object(font)
+
+		return font.xref
+
+	def _get_signing_text(self):
+		t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb")
+		subject = self._get_cert_subject(self._args.sign_cert)
+		line = "Subject: " + subject
+		lines = t1.wrap_text(line, 6 * 1000)
+		text = [ "(%s) Tj" % (line) for line in lines ]
+		text = " T* ".join(text)
+		return text.encode("ascii")
 
 	def _generate_form(self):
 		form_graphics = PDFResources(pkgutil.get_data("llpdf.resources", "signing_graphics.pdf"))
 		mapping = self._pdf.coalesce(form_graphics, additional_cross_references = { PDFXRef(9998, 0): self._get_font_reference() })
 		resources_xref = mapping[PDFXRef(9999, 0)]
 		form_data = pkgutil.get_data("llpdf.resources", "signing_form.pdf")
+		form_data = form_data.replace(b"%${TEXT}", self._get_signing_text())
 		return self._create_object({
 			PDFName("/Type"):			PDFName("/XObject"),
 			PDFName("/Subtype"):		PDFName("/Form"),
@@ -161,7 +179,7 @@ class SignFilter(PDFFilter):
 			PDFName("/T"):				b"Digital Signature",							# Text
 			PDFName("/P"):				annotated_page_xref,							# Indirect reference to page object
 			PDFName("/F"):				AnnotationFlag.Locked | AnnotationFlag.Print,	# Flags as Acrobat sets them ("Locked" is required or annotation won't show up)
-			PDFName("/AP"): {														# Appearance dictionary
+			PDFName("/AP"): {															# Appearance dictionary
 				PDFName("/N"): form_xref,
 			},
 			PDFName("/Lock"):			lock_obj_xref,
