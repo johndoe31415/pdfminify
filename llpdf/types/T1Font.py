@@ -252,13 +252,18 @@ class T1Command(object):
 class NaiveDebuggingCanvas(object):
 	_STEP_COUNT = 100
 	_SCALE_FACTOR = 7
-	_OFFSET_X = round(1000 / _SCALE_FACTOR)
-	_OFFSET_Y = round(1000 / _SCALE_FACTOR)
-	_WIDTH = round(2.5 * _OFFSET_X)
-	_HEIGHT = round(2.5 * _OFFSET_Y)
+	#_OFFSET_X = 500
+	#_OFFSET_Y = 500
+	#_WIDTH = 1500
+	#_HEIGHT = 1500
+
+	_OFFSET_X = 750
+	_OFFSET_Y = 750
+	_WIDTH = 2000
+	_HEIGHT = 2000
 
 	def __init__(self):
-		self._image = PnmPicture.new(self._WIDTH, self._HEIGHT)
+		self._image = PnmPicture.new(round(self._WIDTH / self._SCALE_FACTOR), round(self._HEIGHT / self._SCALE_FACTOR))
 
 	@property
 	def image(self):
@@ -268,10 +273,10 @@ class NaiveDebuggingCanvas(object):
 		yield from (x / (self._STEP_COUNT - 1) for x in range(self._STEP_COUNT))
 
 	def _emit(self, x, y):
-		(x, y) = (round(x), round(y))
-		x = round((x / self._SCALE_FACTOR) + self._OFFSET_X)
-		y = self._HEIGHT - 1 - (round((y / self._SCALE_FACTOR) + self._OFFSET_Y))
-		self._image.set_pixel(x, y, (0, 0, 0))
+		x = (x + self._OFFSET_X) / self._SCALE_FACTOR
+		y = (y + self._OFFSET_Y) / self._SCALE_FACTOR
+		y = self._image.height - 1 - y
+		self._image.set_pixel_antialiased(x, y, (0, 0, 0))
 
 	@staticmethod
 	def _cubic_bezier(t, pt1, pt2, pt3, pt4):
@@ -361,6 +366,8 @@ class T1Interpreter(object):
 					self._log.error("T1 font code referenced subroutine %s, but no such subroutine known. Ignoring.", cmd)
 				else:
 					self.run(subr.parse())
+		elif cmd.cmdcode == T1CommandCode.callothersubr:
+			self._log.warn("Unsupported right now: %s", cmd)
 		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem, T1CommandCode.vstem3, T1CommandCode.hstem3, T1CommandCode.dotsection ]:
 			# Hint commands, ignore
 			pass
@@ -591,7 +598,11 @@ if __name__ == "__main__":
 #	print(t1)
 #	print("".join(t1.get_charstrings()))
 #	print(len(list(t1.get_charstrings())))
-	filename = "/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb"
+	import sys
+	if len(sys.argv) == 1:
+		filename = "/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb"
+	else:
+		filename = sys.argv[1]
 	print(filename)
 #	t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/public/bera/fver8a.pfb")
 	t1 = T1Font.from_pfb_file(filename)

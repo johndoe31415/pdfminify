@@ -172,16 +172,69 @@ class PnmPicture(object):
 
 	@property
 	def bytes_per_pixel(self):
-		# TODO: ONLY WORKS FOR PIXMAPS.
-		# FIXME: THIS IS A HORRIBLE CLUSTERFUCK OF A HACKJOB. FIX ME, YOU LAZY BUM!
-		assert(self.img_format == PnmPictureFormat.Pixmap)
-		return 3
+		if self.img_format == PnmPictureFormat.Bitmap:
+			raise Exception("Pixel operations on bitmaps are currently unsupported.")
+		return {
+			PnmPictureFormat.Graymap:	1,
+			PnmPictureFormat.Pixmap:	3,
+		}[self.img_format]
 
 	def _getoffset(self, x, y):
 		assert(0 <= x < self.width)
 		assert(0 <= y < self.height)
 		offset = self.bytes_per_pixel * ((y * self.width) + x)
 		return offset
+
+	@staticmethod
+	def _blendpixel(pixel1, pixel2, opacity):
+		assert(0 <= opacity <= 1)
+		return tuple(round((x * (1 - opacity)) + (y * opacity)) for (x, y) in zip(pixel1, pixel2))
+
+	def get_pixel(self, x, y):
+		offset = self._getoffset(x, y)
+		pixel = tuple(self._data[offset + i] for i in range(self.bytes_per_pixel))
+		return pixel
+
+	def set_pixel(self, x, y, pixel):
+		assert(len(pixel) == self.bytes_per_pixel)
+		offset = self._getoffset(x, y)
+		for i in range(self.bytes_per_pixel):
+			self._data[offset + i] = pixel[i]
+
+	def set_pixel_antialiased(self, x, y, pixel):
+		low_x = (x - 0.5)
+		low_y = (y - 0.5)
+
+		p0 = (int(low_x), int(low_y))
+		p1 = (int(low_x) + 1, int(low_y))
+		p2 = (int(low_x), int(low_y) + 1)
+		p3 = (int(low_x) + 1, int(low_y) + 1)
+
+		o0 = (1 - abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
+		o1 = (abs(p0[0] - low_x)) * (1 - abs(p0[1] - low_y))
+		o2 = (1 - abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
+		o3 = (abs(p0[0] - low_x)) * (abs(p0[1] - low_y))
+
+		self.set_pixel(p0[0], p0[1], self._blendpixel(self.get_pixel(p0[0], p0[1]), pixel, o0))
+		self.set_pixel(p1[0], p1[1], self._blendpixel(self.get_pixel(p1[0], p1[1]), pixel, o1))
+		self.set_pixel(p2[0], p2[1], self._blendpixel(self.get_pixel(p2[0], p2[1]), pixel, o2))
+		self.set_pixel(p3[0], p3[1], self._blendpixel(self.get_pixel(p3[0], p3[1]), pixel, o3))
+
+
+
+		pass
+
+	def write_file(self, filename):
+		with open(filename, "wb") as f:
+			save_format = self._SAVE_FORMAT[self.img_format]
+			f.write(("%s\n" % (save_format)).encode("ascii"))
+			f.write(b"# CREATOR: PnmPicture.py\n")
+			f.write(("%d %d\n" % (self._width, self._height)).encode("ascii"))
+			if self.img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
+				f.write(b"255\n")
+			f.write(self._data)
+		return self
+
 
 #	def multiply(self, pixel):
 #		(mr, mg, mb) = pixel
@@ -225,29 +278,6 @@ class PnmPicture(object):
 #						upscaled.setpixel(xmultiplicity * x + xoff, ymultiplicity * y + yoff, pixel)
 #		return upscaled
 #
-	def get_pixel(self, x, y):
-		offset = self._getoffset(x, y)
-		pixel = tuple(self._data[offset + 0] for i in range(self.bytes_per_pixel))
-		return pixel
-
-	def set_pixel(self, x, y, pixel):
-		assert(len(pixel) == self.bytes_per_pixel)
-		offset = self._getoffset(x, y)
-		for i in range(self.bytes_per_pixel):
-			self._data[offset + i] = pixel[i]
-		return self
-
-	def write_file(self, filename):
-		with open(filename, "wb") as f:
-			save_format = self._SAVE_FORMAT[self.img_format]
-			f.write(("%s\n" % (save_format)).encode("ascii"))
-			f.write(b"# CREATOR: PnmPicture.py\n")
-			f.write(("%d %d\n" % (self._width, self._height)).encode("ascii"))
-			if self.img_format in [ PnmPictureFormat.Pixmap, PnmPictureFormat.Graymap ]:
-				f.write(b"255\n")
-			f.write(self._data)
-		return self
-
 #	def getsubpicture(self, offsetx, offsety, width, height):
 #		assert(offsetx + width <= self.width)
 #		assert(offsety + height <= self.height)
@@ -287,13 +317,6 @@ class PnmPicture(object):
 #		b = round(bsum / self.pixelcnt)
 #		return (r, g, b)
 #
-#	@staticmethod
-#	def _blendpixel(pixel1, pixel2, opacity):
-#		(r1, g1, b1) = pixel1
-#		(r2, g2, b2) = pixel2
-#		return (round((r1 * (1 - opacity)) + (r2 * opacity)),
-#					round((g1 * (1 - opacity)) + (g2 * opacity)),
-#					round((b1 * (1 - opacity)) + (b2 * opacity)))
 #
 #
 #	def blend(self, pixel, opacity):
@@ -383,11 +406,7 @@ class PnmPicture(object):
 
 	def __hash__(self):
 		return hash(self.data)
-#
-#	def __iter__(self):
-#		for i in range(0, len(self._data), 3):
-#			yield (self._data[i + 0], self._data[i + 1], self._data[i + 2])
-#
+
 	def __str__(self):
 		return "%sImg %d x %d (%d bytes)" % (self.img_format.name, self.width, self.height, len(self._data))
 
@@ -440,6 +459,27 @@ class FilterStencil(object):
 		return self._coeffs[x + (y * self.width)]
 
 if __name__ == "__main__":
+	import unittest
+
+	class PnmPictureTest(unittest.TestCase):
+		def test_new(self):
+			img = PnmPicture.new(2, 2)
+			self.assertEqual(img.data, bytes.fromhex("ffffff ffffff ffffff ffffff"))
+
+		def test_set_get_pixel(self):
+			img = PnmPicture.new(2, 2)
+			img.set_pixel(0, 0, (0xab, 0xcd, 0xef))
+			img.set_pixel(1, 1, (0x33, 0x44, 0x55))
+			self.assertEqual(img.get_pixel(1, 1), (0x33, 0x44, 0x55))
+			self.assertEqual(img.data, bytes.fromhex("abcdef ffffff ffffff 334455"))
+
+		def test_set_pixel_uneven(self):
+			img = PnmPicture.new(3, 3)
+			img.set_pixel_antialiased(1.75, 0.9, (0xab, 0xcd, 0xef))
+			self.assertEqual(img.data, bytes.fromhex("ffffff d9e8f8 f2f8fd ffffff e6f0fa f7fafd ffffff ffffff ffffff"))
+
+	unittest.main()
+
 #	pic = PnmPicture()
 #	pic.readfile("test_rgb_bin.pnm")
 #	pic.readfile("test_rgb_ascii.pnm")
@@ -472,10 +512,12 @@ if __name__ == "__main__":
 #	pic.applystencil(stencil, pic)
 #	pic.writefile("bar.pnm")
 
-	for imgtype in [ 2, 3, 5, 6 ]:
-		infilename = "pnmtest_P%d.pnm" % (imgtype)
-		outfilename = "outtest_P%d.pnm" % (imgtype)
-		img = PnmPicture.read_file(infilename)
-		img.write_file(outfilename)
-		print(img)
+
+
+#	for imgtype in [ 2, 3, 5, 6 ]:
+#		infilename = "pnmtest_P%d.pnm" % (imgtype)
+#		outfilename = "outtest_P%d.pnm" % (imgtype)
+#		img = PnmPicture.read_file(infilename)
+#		img.write_file(outfilename)
+#		print(img)
 
