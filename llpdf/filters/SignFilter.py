@@ -42,8 +42,12 @@ from .PDFFilter import PDFFilter
 
 class SignFilter(PDFFilter):
 	def _get_signature_extents(self):
-		posx = Measurements.convert(25, "mm", "native")
-		posy = Measurements.convert(25, "mm", "native")
+		if self._args.sign_pos is None:
+			posx = Measurements.convert(25, "mm", "native")
+			posy = Measurements.convert(25, "mm", "native")
+		else:
+			posx = Measurements.convert(self._args.sign_pos[0], to_unit = "native")
+			posy = Measurements.convert(self._args.sign_pos[1], to_unit = "native")
 		width = round(Measurements.convert(90, "mm", "native"))
 		height = round(Measurements.convert(35, "mm", "native"))
 		return [ posx, posy, width, height ]

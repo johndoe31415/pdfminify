@@ -35,7 +35,11 @@ class Measurements(object):
 	_DEFAULT_UNIT = "native"
 
 	@classmethod
-	def convert(cls, value, from_unit, to_unit):
+	def convert(cls, value, from_unit = None, to_unit = None):
+		if from_unit is None:
+			from_unit = cls._DEFAULT_UNIT
+		if to_unit is None:
+			to_unit = cls._DEFAULT_UNIT
 		from_scalar = cls._UNITS[from_unit].factor
 		to_scalar = cls._UNITS[to_unit].factor
 		return value / to_scalar * from_scalar
@@ -50,7 +54,7 @@ class Measurements(object):
 		cls._DEFAULT_UNIT = unit
 
 	@classmethod
-	def format(cls, value, unit, to_unit = None, suffix = True):
+	def format(cls, value, unit = None, to_unit = None, suffix = True):
 		if to_unit is None:
 			to_unit = cls._DEFAULT_UNIT
 		from_unit = cls._UNITS[unit]

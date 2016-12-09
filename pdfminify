@@ -39,6 +39,12 @@ if python_version < min_python_version:
 if (len(sys.argv) >= 2) and (sys.argv[1] == "--test"):
 	llpdf.tests.run(terminate_after = True)
 
+def _offset(text):
+	text = text.split(",")
+	if len(text) != 2:
+		raise argparse.ArgumentTypeError("expected two comma-separated values, but %d given." % (len(text)))
+	return [ float(value) for value in text ]
+
 def _cropbox(text):
 	text = text.split(",")
 	if len(text) != 4:
@@ -61,7 +67,7 @@ parser.add_argument("-j", "--jpeg-images", action = "store_true", help = "Conver
 parser.add_argument("--jpeg-quality", metavar = "percent", type = _intrange(0, 100), default = 85, help = "When converting images to JPEG format, the parameter gives the compression quality. It is an integer from 0-100 (higher is better, but creates also larger output files).")
 parser.add_argument("--no-downscaling", action = "store_true", help = "Do not apply downscaling filter on the PDF, take all images as they are.")
 
-parser.add_argument("--cropbox", metavar = "box", type = _cropbox, help = "Crop pages by additionally adding a /CropBox to all pages of the PDF file. Pages will be cropped at offset (x, y) to a width (w, h). Must be given in the format x,y,w,h. The unit in which offset, width and height are given can be specified using the --unit parameter.")
+parser.add_argument("--cropbox", metavar = "x,y,w,h", type = _cropbox, help = "Crop pages by additionally adding a /CropBox to all pages of the PDF file. Pages will be cropped at offset (x, y) to a width (w, h). Must be given in the format x,y,w,h. The unit in which offset, width and height are given can be specified using the --unit parameter.")
 parser.add_argument("--unit", choices = llpdf.Measurements.list_units(), default = "native", help = "Specify the unit of measurement that is used for input and output. Can be any of %(choices)s, defaults to %(default)s. One native PDF unit equals 1/72th of an inch.")
 
 parser.add_argument("--one-bit-alpha", action = "store_true", help = "Force all alpha channels in images to use a color depth of one bit. This will make transparent images have rougher edges, but saves additional space.")
@@ -88,6 +94,7 @@ parser.add_argument("--sign-contact-info", metavar = "infotext", help = "A conta
 parser.add_argument("--sign-reason", metavar = "reason", help = "The reason why the document was signed.")
 parser.add_argument("--sign-page", metavar = "pageno", type = int, default = 1, help = "Page number on which the signature should be displayed. Defaults to %(default)d.")
 parser.add_argument("--sign-font", metavar = "pfbfile", type = str, default = "/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb", help = "To be able to include text in the signature, a T1 font must be included into the PDF. This gives the filename of the font that is to be used for that purpose. Must be in PFB (PostScript Font Binary) file format and will be included in the result PDF in full. Defaults to %(default)s.")
+parser.add_argument("--sign-pos", metavar = "x,y", type = _offset,  help = "Determines where the signature will be placed on the page. Units are determined by the --unit variable and position is relative to lower left corner.")
 
 parser.add_argument("--embed-payload", metavar = "path", type = str, help = "Embed an opaque file as a payload into the PDF as a valid PDF object. This is useful only if you want to place an easter egg inside your PDF file.")
 parser.add_argument("--no-pdf-tagging", action = "store_true", help = "Omit tagging the PDF file with a reference to pdfminify and the used version.")
