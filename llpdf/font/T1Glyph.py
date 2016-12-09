@@ -26,8 +26,9 @@ from llpdf.font.T1Command import T1Command, T1CommandCode
 class T1Glyph(object):
 	def __init__(self, glyph_data):
 		self._data = glyph_data
+		self._parsed_glyph = None
 
-	def parse(self):
+	def _parse(self):
 		stack = [ ]
 		commands = [ ]
 		index = 0
@@ -42,8 +43,14 @@ class T1Glyph(object):
 					index += 1
 					v = (v << 8) | w
 				cmdcode = T1CommandCode(v)
-				commands.append(T1Command(cmdcode, *stack))
-				stack = [ ]
+				if cmdcode == T1CommandCode.div:
+					# Directly execute the div
+					div_result = stack[-2] / stack[-1]
+					stack = stack[ : -2]
+					stack.append(div_result)
+				else:
+					commands.append(T1Command(cmdcode, *stack))
+					stack = [ ]
 			elif 32 <= v <= 246:
 				stack.append(v - 139)
 			elif 247 <= v <= 250:
@@ -62,16 +69,31 @@ class T1Glyph(object):
 			index += 1
 		return commands
 
+	def parse(self):
+		if self._parsed_glyph is None:
+			self._parsed_glyph = self._parse()
+		return self._parsed_glyph
+
 	def interpret(self, canvas = None, parent_font = None):
 		interpreter = T1Interpreter(canvas = canvas, parent_font = parent_font)
 		interpreter.run(self.parse())
 		return interpreter
 
-	def get_width(self):
+	@property
+	def width(self):
 		cmds = self.parse()
 		cmd = cmds[0]
 		if cmd.cmdcode == T1CommandCode.hsbw:
 			return cmd[1]
+		else:
+			raise Exception("Do not know how to get width vector from commands:", cmds)
+
+	@property
+	def left_sidebearing(self):
+		cmds = self.parse()
+		cmd = cmds[0]
+		if cmd.cmdcode == T1CommandCode.hsbw:
+			return cmd[0]
 		else:
 			raise Exception("Do not know how to get width vector from commands:", cmds)
 
@@ -83,4 +105,4 @@ class T1Glyph(object):
 		return str(self)
 
 	def __str__(self):
-		return "Glyph<%d bytes>" % (len(self._data))
+		return "Glyph<%d bytes, w = %d, lsb = %d>" % (len(self._data), self.width, self.left_sidebearing)

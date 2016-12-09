@@ -24,6 +24,7 @@ import re
 import enum
 import struct
 import logging
+import string
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFObject import PDFObject
@@ -32,7 +33,7 @@ from llpdf.font.T1PRNG import T1PRNG
 from llpdf.font.T1Glyph import T1Glyph
 from llpdf.font.T1Canvas import NaiveDebuggingCanvas
 from llpdf.font.T1Interpreter import T1Interpreter
-from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName
+from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName, character_names, build_encoding_array
 
 class T1Font(object):
 	_T1_FONT_KEY = 55665
@@ -40,6 +41,7 @@ class T1Font(object):
 	_PFB_HEADER = struct.Struct("< H L")
 	_FONT_BBOX_RE = re.compile(r"/FontBBox\s*{(?P<v1>-?\d+)\s+(?P<v2>-?\d+)\s+(?P<v3>-?\d+)\s+(?P<v4>-?\d+)\s*}")
 	_FONT_NAME_RE = re.compile(r"/FontName\s*(?P<name>/[^\s]+)")
+	_PRINTABLE_CHARS = set(string.ascii_lowercase + string.ascii_uppercase + string.digits + " =+-_:./")
 
 	def __init__(self, cleardata, cipherdata, trailerdata):
 		self._cleardata = cleardata
@@ -160,7 +162,7 @@ class T1Font(object):
 		for (name, glyph) in self.charset.items():
 			try:
 				code = PostScriptStandardCharacterName[name[1:]]
-				widths[int(code)] = glyph.get_width()
+				widths[int(code)] = glyph.width
 			except KeyError:
 				pass
 		return widths
@@ -206,21 +208,30 @@ class T1Font(object):
 			PDFName("/FirstChar"):		first_char,
 			PDFName("/LastChar"):		last_char,
 			PDFName("/Widths"):			widths_array,
-#			PDFName("/Encoding"):		{
-#				PDFName("/Type"):			PDFName("/Encoding"),
-#				PDFName("/Differences"):	[ 16, PDFName("/quotedblleft"), PDFName("/quotedblright"), 21, PDFName("/endash") ],
-#			},
+			PDFName("/Encoding"):		{
+				PDFName("/Type"):			PDFName("/Encoding"),
+				PDFName("/Differences"):	build_encoding_array("latin1"),
+			},
 			PDFName("/BaseFont"):		self.get_font_name(),
 			PDFName("/FontDescriptor"):	fontdescriptor_xref,
 		}
 		obj = PDFObject.create(objid, 0, content)
 		return obj
 
-	def wrap_text(self, text, line_width):
-		# TODO IMPLEMENT ME
-		return [ text ]
-#		for char in text:
-#			print(ord(char))
+	def encode_text(self, text):
+		result = [ ]
+		printable = ""
+		for char in text:
+			if char in self._PRINTABLE_CHARS:
+				printable += char
+			else:
+				if printable != "":
+					result.append("(%s)" % (printable))
+					printable = ""
+				result.append("<%02x>" % (char.encode("latin1")[0]))
+		if printable != "":
+			result.append("(%s)" % (printable))
+		return "".join(result)
 
 	def dump(self, filename_prefix):
 		with open(filename_prefix + "1", "wb") as f:

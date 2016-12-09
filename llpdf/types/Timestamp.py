@@ -56,6 +56,11 @@ class Timestamp(object):
 			tz_offset = -tz_offset
 		return cls(dt, tz_offset)
 
+	def format_human_readable(self):
+		result = self._ts.strftime("%Y-%m-%d %H:%M:%S ")
+		result += "%+03d:%02d" % (self._offset_mins // 60, abs(self._offset_mins) % 60)
+		return result
+
 	def format_xml(self):
 		result = self._ts.strftime("%Y-%m-%dT%H:%M:%S")
 		result += "%+03d:%02d" % (self._offset_mins // 60, abs(self._offset_mins) % 60)

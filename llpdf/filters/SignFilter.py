@@ -36,16 +36,16 @@ from llpdf.types.Flags import AnnotationFlag, FieldFlag, SignatureFlag
 from llpdf.types.Timestamp import Timestamp
 from llpdf.Measurements import Measurements
 from llpdf.tools.OpenSSLVersion import OpenSSLVersion
+from llpdf.tools.X509Certificate import X509Certificate
+from llpdf.font.TextWrapper import TextWrapper
 from .PDFFilter import PDFFilter
 
 class SignFilter(PDFFilter):
-	_signature_box_aspect_ratio = 16 / 9
-
 	def _get_signature_extents(self):
 		posx = Measurements.convert(25, "mm", "native")
 		posy = Measurements.convert(25, "mm", "native")
-		width = round(Measurements.convert(50, "mm", "native"))
-		height = round(width / self._signature_box_aspect_ratio)
+		width = round(Measurements.convert(90, "mm", "native"))
+		height = round(Measurements.convert(35, "mm", "native"))
 		return [ posx, posy, width, height ]
 
 	def _get_signature_rect(self):
@@ -55,14 +55,6 @@ class SignFilter(PDFFilter):
 	def _get_signature_bbox(self):
 		(posx, posy, width, height) = self._get_signature_extents()
 		return [ 0, 0, width, height ]
-
-	def _get_cert_subject(self, pemcertfile):
-		cmd = [ "openssl", "x509", "-in", pemcertfile, "-noout", "-subject" ]
-		subject = subprocess.check_output(cmd)
-		subject = subject.decode().rstrip("\r\n")
-		assert(subject.startswith("subject= "))
-		subject = subject[10:]
-		return subject
 
 	def _do_sign(self, bin_data):
 		cmd = [ "openssl", "cms", "-sign", "-binary" ]
@@ -110,7 +102,7 @@ class SignFilter(PDFFilter):
 			PDFName("/SubFilter"):		PDFName("/adbe.pkcs7.detached"),
 			PDFName("/ByteRange"):		MarkerObject("sig_byterange", raw = "[ " + (" " * (4 * 10)) + "  "),
 			PDFName("/Contents"):		MarkerObject("sig_contents", child = placeholder_signature),
-			PDFName("/M"):				Timestamp.localnow().format_pdf().encode("ascii"),
+			PDFName("/M"):				self._sign_datetime.format_pdf().encode("ascii"),
 			PDFName("/Prop_Build"):		self._property_dict(),
 		}
 		if self._args.signer is not None:
@@ -124,39 +116,42 @@ class SignFilter(PDFFilter):
 		return self._create_object(content)
 
 	def _get_font_reference(self):
-		# Load the T1 font first
-		#t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/adobe/courier/pcrb8a.pfb")
-		t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb")
-
 		# Then add the FontFile to the PDF first
-		fontfile = t1.get_fontfile_object(self._pdf.get_free_objid())
+		fontfile = self._font.get_fontfile_object(self._pdf.get_free_objid())
 		self._pdf.replace_object(fontfile)
 
 		# Create a font descriptor for that font
-		descriptor = t1.get_font_descriptor_object(self._pdf.get_free_objid(), fontfile.xref)
+		descriptor = self._font.get_font_descriptor_object(self._pdf.get_free_objid(), fontfile.xref)
 		self._pdf.replace_object(descriptor)
 
 		# Then create the font object itself
-		font = t1.get_font_object(self._pdf.get_free_objid(), descriptor.xref)
+		font = self._font.get_font_object(self._pdf.get_free_objid(), descriptor.xref)
 		self._pdf.replace_object(font)
 
 		return font.xref
 
 	def _get_signing_text(self):
-		t1 = T1Font.from_pfb_file("/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb")
-		subject = self._get_cert_subject(self._args.sign_cert)
-		line = "Subject: " + subject
-		lines = t1.wrap_text(line, 6 * 1000)
-		text = [ "(%s) Tj" % (line) for line in lines ]
-		text = " T* ".join(text)
-		return text.encode("ascii")
+		cert = X509Certificate(self._args.sign_cert)
+		paragraphs = [
+			"Subject: %s" % (cert.subject),
+			"Issuer: %s" % (cert.issuer),
+			"Serial: 0x%x" % (cert.serial),
+			"Signed: %s" % (self._sign_datetime.format_human_readable())
+		]
+		wrapper = TextWrapper(self._font, font_size = 6, text_width = round(Measurements.convert(67, "mm", "native")), prefer_break_on = " /")
+		text = wrapper.wrap_paragraphs(paragraphs)
+		return text
 
 	def _generate_form(self):
 		form_graphics = PDFResources(pkgutil.get_data("llpdf.resources", "signing_graphics.pdf"))
 		mapping = self._pdf.coalesce(form_graphics, additional_cross_references = { PDFXRef(9998, 0): self._get_font_reference() })
 		resources_xref = mapping[PDFXRef(9999, 0)]
 		form_data = pkgutil.get_data("llpdf.resources", "signing_form.pdf")
+
+		(posx, posy, width, height) = self._get_signature_bbox()
 		form_data = form_data.replace(b"%${TEXT}", self._get_signing_text())
+		form_data = form_data.replace(b"${WIDTH}", ("%.0f" % (width - 1)).encode("ascii"))
+		form_data = form_data.replace(b"${HEIGHT}", ("%.0f" % (height - 1)).encode("ascii"))
 		return self._create_object({
 			PDFName("/Type"):			PDFName("/XObject"),
 			PDFName("/Subtype"):		PDFName("/Form"),
@@ -189,27 +184,37 @@ class SignFilter(PDFFilter):
 		})
 
 	def run(self):
-		self._log.debug("Signing document.")
-		for page in self._pdf.pages:
-			annotated_page_xref = page.xref
-			break
+		self._font = T1Font.from_pfb_file(self._args.sign_font)
+		self._sign_datetime = Timestamp.localnow()
+		self._log.debug("Signing document: Timestamp %s", self._sign_datetime)
+
+		annotated_page_xref = None
+		for (pageno, page) in enumerate(self._pdf.pages, 1):
+			if pageno == self._args.sign_page:
+				annotated_page_xref = page.xref
+				break
+		if annotated_page_xref is None:
+			raise Exception("Could not find page #%d in document on which to place the digital signature." % (self._args.sign_page))
 		signature_xref = self._sign_pdf()
 		form_xref = self._generate_form()
 		lock_xref = self._generate_lock()
 
 		annot_xref = self._generate_signature_annotation(signature_xref, form_xref, lock_xref, annotated_page_xref)
-		annots_xref = self._create_object([ annot_xref ])
 		page = self._pdf.lookup(annotated_page_xref)
 
-		# TODO: What if there are already annotations? append instead of overwrite
-		assert(PDFName("/Annots") not in page.content)
-		page.content[PDFName("/Annots")] = annots_xref
+		if not PDFName("/Annots") in page.content:
+			annots_xref = self._create_object([ annot_xref ])
+			page.content[PDFName("/Annots")] = annots_xref
+		else:
+			page.content[PDFName("/Annots")].append(annot_xref)
 
 		root_xref = self._pdf.trailer[PDFName("/Root")]
 		root_obj = self._pdf.lookup(root_xref)
 
 		# Write the interactive form dictionary
-		assert(PDFName("/AcroForm") not in page.content)
+		if PDFName("/AcroForm") in page.content:
+			raise Exception("We already have an /AcroForm set, unsure how to handle it. Bailing out instead of overwriting current contents.")
+
 		root_obj.content[PDFName("/AcroForm")] = self._create_object({
 			PDFName("/Fields"):		[ annot_xref ],
 			PDFName("/SigFlags"):	SignatureFlag.SignaturesExist | SignatureFlag.AppendOnly,

@@ -81,11 +81,13 @@ parser.add_argument("--color-profile", metavar = "iccfile", help = "When creatin
 
 parser.add_argument("--sign-cert", metavar = "certfile", help = "pdfminify can additionally cryptographically sign your result PDF file with an X.509 certificate and corresponding key. This parameter specifies the certificate filename.")
 parser.add_argument("--sign-key", metavar = "keyfile", help = "This parameter specifies the key filename, also in PEM format.")
-parser.add_argument("--sign-chain", metavar = "pemfile", help = "When signing a PDF, this gives the PEM-formatted certificate chain file. Can be omitted, if this should not be included in the PKCS#7 signature.")
+parser.add_argument("--sign-chain", metavar = "pemfile", help = "When signing a PDF, this gives the PEM-formatted certificate chain file. Can be omitted if this should not be included in the PKCS#7 signature.")
 parser.add_argument("--signer", metavar = "name", help = "The name of the person signing the document.")
 parser.add_argument("--sign-location", metavar = "hostname", help = "The location of the signing, usually a hostname.")
 parser.add_argument("--sign-contact-info", metavar = "infotext", help = "A contact information field under which the signer can be reached. Usually a phone number of email address.")
 parser.add_argument("--sign-reason", metavar = "reason", help = "The reason why the document was signed.")
+parser.add_argument("--sign-page", metavar = "pageno", type = int, default = 1, help = "Page number on which the signature should be displayed. Defaults to %(default)d.")
+parser.add_argument("--sign-font", metavar = "pfbfile", type = str, default = "/usr/share/texlive/texmf-dist/fonts/type1/bitstrea/charter/bchr8a.pfb", help = "To be able to include text in the signature, a T1 font must be included into the PDF. This gives the filename of the font that is to be used for that purpose. Must be in PFB (PostScript Font Binary) file format and will be included in the result PDF in full. Defaults to %(default)s.")
 
 parser.add_argument("--embed-payload", metavar = "path", type = str, help = "Embed an opaque file as a payload into the PDF as a valid PDF object. This is useful only if you want to place an easter egg inside your PDF file.")
 parser.add_argument("--no-pdf-tagging", action = "store_true", help = "Omit tagging the PDF file with a reference to pdfminify and the used version.")
