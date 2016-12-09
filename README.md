@@ -59,17 +59,21 @@ TPG (Toy Parser Generator) and the ICC sRGB color profile fall under their
 respective licenses.
 
 # Usage
-```bash
+<pre>
 $ ./pdfminify --help
 usage: pdfminify [-h] [-d dpi] [-j] [--jpeg-quality percent]
-                 [--no-downscaling] [--cropbox box]
+                 [--no-downscaling] [--cropbox x,y,w,h]
                  [--unit {cm,inch,mm,native}] [--one-bit-alpha]
                  [--remove-alpha] [--background-color color]
                  [--strip-metadata] [--saveimgdir path] [--raw-output]
                  [--pretty-pdf] [--no-xref-stream] [--no-object-streams]
-                 [--pdfa-1b] [--color-profile iccfile] [--no-pdf-tagging]
-                 [--decompress-data] [--analyze] [--dump-xref-table]
-                 [--no-filters] [-v]
+                 [--pdfa-1b] [--color-profile iccfile] [--sign-cert certfile]
+                 [--sign-key keyfile] [--sign-chain pemfile] [--signer name]
+                 [--sign-location hostname] [--sign-contact-info infotext]
+                 [--sign-reason reason] [--sign-page pageno]
+                 [--sign-font pfbfile] [--sign-pos x,y] [--embed-payload path]
+                 [--no-pdf-tagging] [--decompress-data] [--analyze]
+                 [--dump-xref-table] [--no-filters] [-v]
                  pdf_in pdf_out
 
 positional arguments:
@@ -91,7 +95,7 @@ optional arguments:
                         output files).
   --no-downscaling      Do not apply downscaling filter on the PDF, take all
                         images as they are.
-  --cropbox box         Crop pages by additionally adding a /CropBox to all
+  --cropbox x,y,w,h     Crop pages by additionally adding a /CropBox to all
                         pages of the PDF file. Pages will be cropped at offset
                         (x, y) to a width (w, h). Must be given in the format
                         x,y,w,h. The unit in which offset, width and height
@@ -154,6 +158,37 @@ optional arguments:
                         into the PDF as part of the output intent. When
                         omitted, it defaults to the sRGB IEC61966 v2 "black
                         scaled" profile which is included within pdfminify.
+  --sign-cert certfile  pdfminify can additionally cryptographically sign your
+                        result PDF file with an X.509 certificate and
+                        corresponding key. This parameter specifies the
+                        certificate filename.
+  --sign-key keyfile    This parameter specifies the key filename, also in PEM
+                        format.
+  --sign-chain pemfile  When signing a PDF, this gives the PEM-formatted
+                        certificate chain file. Can be omitted if this should
+                        not be included in the PKCS#7 signature.
+  --signer name         The name of the person signing the document.
+  --sign-location hostname
+                        The location of the signing, usually a hostname.
+  --sign-contact-info infotext
+                        A contact information field under which the signer can
+                        be reached. Usually a phone number of email address.
+  --sign-reason reason  The reason why the document was signed.
+  --sign-page pageno    Page number on which the signature should be
+                        displayed. Defaults to 1.
+  --sign-font pfbfile   To be able to include text in the signature, a T1 font
+                        must be included into the PDF. This gives the filename
+                        of the font that is to be used for that purpose. Must
+                        be in PFB (PostScript Font Binary) file format and
+                        will be included in the result PDF in full. Defaults
+                        to the Bitstream Charter Serif font that is included
+                        within pdfminify.
+  --sign-pos x,y        Determines where the signature will be placed on the
+                        page. Units are determined by the --unit variable and
+                        position is relative to lower left corner.
+  --embed-payload path  Embed an opaque file as a payload into the PDF as a
+                        valid PDF object. This is useful only if you want to
+                        place an easter egg inside your PDF file.
   --no-pdf-tagging      Omit tagging the PDF file with a reference to
                         pdfminify and the used version.
   --decompress-data     Decompress all FlateDecode compressed data in the
@@ -169,7 +204,7 @@ optional arguments:
                         malformed PDF generation.
   -v, --verbose         Show verbose messages during conversation. Can be
                         specified multiple times to increase log level.
-```
+</pre>
 
 # PDF reading/writing
 pdfminify uses its own PDF parser because for this particular purpose, neither

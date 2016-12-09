@@ -3,6 +3,7 @@ The ICC sRGB Color Profile is included in the file
 "sRGB_IEC61966-2-1_black_scaled.icc". Its license, as taken from
 http://www.color.org/srgbprofiles.xalter:
 
+<pre>
   To anyone who acknowledges that the file "sRGB_IEC61966-2-1_black
   scaled.icc" is provided "AS IS" WITH NO EXPRESS OR IMPLIED WARRANTY, permission
   to use, copy and distribute these file for any purpose is hereby granted
@@ -11,12 +12,14 @@ http://www.color.org/srgbprofiles.xalter:
   publicity pertaining to distribution of the software without specific, written
   prior permission. ICC makes no representations about the suitability of this
   software for any purpose.
+</pre>
 
 # Bitstream Charter Serif
 The Bitstream Charter Serif font is one of the fonts which Bitstream
 contributed to the X consortium. It is included as the file "bchr8a.pfb". This
 is the original copyright notice:
 
+<pre>
   (c) Copyright 1989-1992, Bitstream Inc., Cambridge, MA.
 
   You are hereby granted permission under all Bitstream propriety rights
@@ -28,4 +31,4 @@ is the original copyright notice:
   Type 1 fonts.
 
   BITSTREAM CHARTER is a registered trademark of Bitstream Inc.
-
+</pre>
