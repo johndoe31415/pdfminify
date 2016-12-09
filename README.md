@@ -24,13 +24,13 @@ there are no guarantees regarding the resulting PDF -- please check for
 yourself if the results still behave identical to your source version.
 
 # Requirements
-pdfminify needs at least Python 3.5. It furthermore uses ImageMagick
-(concretely, the identify and convert tools) It uses the former to determine
-the width, height, colorspace and bits per component of image files and the
-latter to convert images from PNM (the internal format that pdfminify is
-capable of writing natively) to JPEG.
+pdfminify needs at least Python 3.5. It furthermore uses the "identify" and
+"convert" utilities of ImageMagick. It uses the former to determine the width,
+height, colorspace and bits per component of image files and the latter to
+convert images from PNM (the internal format that pdfminify is capable of
+writing natively) to JPEG.
 
-# Acknowledgment
+# Acknowledgments
 pdfminify uses the Toy Parser Generator (TPG) of Christophe Delord
 (http://cdsoft.fr/tpg/). It is included (tpg.py file) and licensed under the
 GNU LGPL v2.1 or any later version. Despite its name, it is far from a toy. In
@@ -41,8 +41,14 @@ go-to solution I would recommend. Seriously, it's amazing. Check it out.
 
 In order to be able to easily create PDF/A-1b files, pdfminify also includes
 the ICC sRGB color profile "sRGB_IEC61966-2-1_black scaled.icc". It is
-distributed under its own license which is included at the bottom of this
-readme file.
+distributed under its own license which is included in the EXTERNAL_LICENSES.md
+file.
+
+When signing documents, a Type1 font is included in the resulting PDF in order
+to display metadata about the generated signature. As a default font, one of
+the Bitstream Charter fonts which was contributed to the X consortium
+(Bitstream Charter Serif) is included with pdfminify. It also has its own
+copyright and license notice in EXTERNAL_LICENSES.md.
 
 # License
 pdfminify is licensed under the GNU GPL v3 (except for external components as
@@ -189,14 +195,3 @@ can fix it -- to be honest, PDF is so complicated that I'm not even sure that I
 can find what the issue is. In any case, be sure to include a minimal example
 PDF that demonstrates the issue in the bug report.
 
-# ICC sRGB Color Profile License
-As taken from http://www.color.org/srgbprofiles.xalter:
-
-  To anyone who acknowledges that the file "sRGB_IEC61966-2-1_black
-  scaled.icc" is provided "AS IS" WITH NO EXPRESS OR IMPLIED WARRANTY, permission
-  to use, copy and distribute these file for any purpose is hereby granted
-  without fee, provided that the file is not changed including the ICC copyright
-  notice tag, and that the name of ICC shall not be used in advertising or
-  publicity pertaining to distribution of the software without specific, written
-  prior permission. ICC makes no representations about the suitability of this
-  software for any purpose.

@@ -1,0 +1,46 @@
+> 9999 = SignFormObject
+< 9998 = FontXRef
+< 9997 = SealFormXRef
+9999 0 obj
+<<
+	/Type /XObject
+	/Subtype /Form
+	/Resources <<
+		/XObject <<
+			/Seal 9997 0 R
+		>>
+		/Font <<
+			/F0 9998 0 R
+		>>
+	>>
+>>
+stream
+% Draw bounding box first
+0.5 w								% Line width
+[ 5 2 ] 0 d							% Dashed line
+0.95 0.95 0.95 rg					% Background color light gray
+0.5 0.5 ${WIDTH} ${HEIGHT} re f		% Bounding box
+0.5 0.5 0.5 RG						% Stroke color gray
+0.5 0.5 ${WIDTH} ${HEIGHT} re s		% Bounding box
+
+% Then draw the (scaled) seal
+q
+0.3 0 0 0.3 4 13 cm
+/Seal Do
+Q
+
+%58 0 190 ${HEIGHT} re s		% Font box
+
+% Text
+0 0 0 rg						% Font color black
+BT
+/F0 8 Tf
+10 TL
+58 ${HEIGHT} Td T*
+(Digitally signed document) Tj T*
+
+/F0 6 Tf
+${TEXT}
+ET
+endstream
+endobj

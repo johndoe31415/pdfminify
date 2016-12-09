@@ -144,15 +144,21 @@ class T1Font(object):
 		return cls(cleardata, cipherdata, trailerdata)
 
 	@classmethod
+	def from_pfb_data(cls, pfb_data):
+		f = StreamRepr(pfb_data)
+		data = [ ]
+		for expect_magic in [ 0x180, 0x280, 0x180 ]:
+			(magic, length) = cls._PFB_HEADER.unpack(f.read(6))
+			assert(magic == expect_magic)
+			data.append(f.read(length))
+		(cleardata, cipherdata, trailerdata) = data
+		return cls(cleardata, cipherdata, trailerdata)
+
+	@classmethod
 	def from_pfb_file(cls, filename):
 		with open(filename, "rb") as f:
-			data = [ ]
-			for expect_magic in [ 0x180, 0x280, 0x180]:
-				(magic, length) = cls._PFB_HEADER.unpack(f.read(6))
-				assert(magic == expect_magic)
-				data.append(f.read(length))
-			(cleardata, cipherdata, trailerdata) = data
-		return cls(cleardata, cipherdata, trailerdata)
+			pfb_data = f.read()
+		return cls.from_pfb_data(pfb_data)
 
 	def get_missing_width(self):
 		return 500

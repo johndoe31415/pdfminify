@@ -25,7 +25,7 @@ import datetime
 import llpdf
 import subprocess
 import pkgutil
-from llpdf.PDFResources import PDFResources
+from llpdf.PDFTemplate import PDFTemplate
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
@@ -147,21 +147,30 @@ class SignFilter(PDFFilter):
 		return text
 
 	def _generate_form(self):
-		form_graphics = PDFResources(pkgutil.get_data("llpdf.resources", "signing_graphics.pdf"))
-		mapping = self._pdf.coalesce(form_graphics, additional_cross_references = { PDFXRef(9998, 0): self._get_font_reference() })
-		resources_xref = mapping[PDFXRef(9999, 0)]
-		form_data = pkgutil.get_data("llpdf.resources", "signing_form.pdf")
+		font_xref = self._get_font_reference()
+		seal_template = PDFTemplate(pkgutil.get_data("llpdf.resources", "seal.pdft"))
+		seal_xref = seal_template.merge_into_pdf(self._pdf)["SealObject"]
+
+		sign_template = PDFTemplate(pkgutil.get_data("llpdf.resources", "sign_form.pdft"))
+		sign_template["FontXRef"] = font_xref
+		sign_template["SealFormXRef"] = seal_xref
+		signform_xref = sign_template.merge_into_pdf(self._pdf)["SignFormObject"]
+
+		signform = self._pdf.lookup(signform_xref)
+		signform.content[PDFName("/BBox")] = self._get_signature_bbox()
+		signform_data = signform.stream.decode()
 
 		(posx, posy, width, height) = self._get_signature_bbox()
-		form_data = form_data.replace(b"%${TEXT}", self._get_signing_text())
-		form_data = form_data.replace(b"${WIDTH}", ("%.0f" % (width - 1)).encode("ascii"))
-		form_data = form_data.replace(b"${HEIGHT}", ("%.0f" % (height - 1)).encode("ascii"))
-		return self._create_object({
-			PDFName("/Type"):			PDFName("/XObject"),
-			PDFName("/Subtype"):		PDFName("/Form"),
-			PDFName("/BBox"):			self._get_signature_bbox(),
-			PDFName("/Resources"):		resources_xref,
-		}, form_data)
+		signform_vars = {
+			"WIDTH":		b"%.0f" % (width - 1),
+			"HEIGHT":		b"%.0f" % (height - 1),
+			"TEXT":			self._get_signing_text(),
+		}
+		for (varname, replacement) in signform_vars.items():
+			key = ("${" + varname + "}").encode("ascii")
+			signform_data = signform_data.replace(key, replacement)
+		signform.set_stream(EncodedObject.create(signform_data, compress = False))
+		return signform_xref
 
 	def _generate_lock(self):
 		return self._create_object({
@@ -188,7 +197,11 @@ class SignFilter(PDFFilter):
 		})
 
 	def run(self):
-		self._font = T1Font.from_pfb_file(self._args.sign_font)
+		if self._args.sign_font is not None:
+			self._font = T1Font.from_pfb_file(self._args.sign_font)
+		else:
+			pfb_data = pkgutil.get_data("llpdf.resources", "bchr8a.pfb")
+			self._font = T1Font.from_pfb_data(pfb_data)
 		self._sign_datetime = Timestamp.localnow()
 		self._log.debug("Signing document: Timestamp %s", self._sign_datetime)
 
