@@ -23,6 +23,11 @@ compliant PDF files. Since this is something that's really difficult to do,
 there are no guarantees regarding the resulting PDF -- please check for
 yourself if the results still behave identical to your source version.
 
+Finally, pdfminify is able to digitally sign your PDF files. For this you will
+need an X.509 certificate and corresponding keypair. The signature will be
+included in the PDF in the form a banner with metadata and sophisticated PDF
+readers will be able to verify that the PDF has not been tampered with.
+
 # Requirements
 pdfminify needs at least Python 3.5. It furthermore uses the "identify" and
 "convert" utilities of ImageMagick. It uses the former to determine the width,
