@@ -38,6 +38,7 @@ fact, it is the most beautiful parser generator I have ever worked with and
 makes grammars and parsing exceptionally easy, even for people without any
 previous parsing experience. If you need parsing and use Python, TPG is *the*
 go-to solution I would recommend. Seriously, it's amazing. Check it out.
+Copyright and license details can be found in EXTERNAL_LICENSES.md.
 
 In order to be able to easily create PDF/A-1b files, pdfminify also includes
 the ICC sRGB color profile "sRGB_IEC61966-2-1_black scaled.icc". It is
@@ -55,8 +56,8 @@ pdfminify is licensed under the GNU GPL v3 (except for external components as
 TPG, which has its own license). Later versions of the GPL are explicitly
 excluded.
 
-TPG (Toy Parser Generator) and the ICC sRGB color profile fall under their
-respective licenses.
+TPG (Toy Parser Generator), the ICC sRGB color profile and the Bitstream
+Charter font fall under their respective licenses (see EXTERNAL_LICENSES.md).
 
 # Usage
 <pre>
@@ -97,9 +98,9 @@ optional arguments:
                         images as they are.
   --cropbox x,y,w,h     Crop pages by additionally adding a /CropBox to all
                         pages of the PDF file. Pages will be cropped at offset
-                        (x, y) to a width (w, h). Must be given in the format
-                        x,y,w,h. The unit in which offset, width and height
-                        are given can be specified using the --unit parameter.
+                        (x, y) to a width (w, h). The unit in which offset,
+                        width and height are given can be specified using the
+                        --unit parameter.
   --unit {cm,inch,mm,native}
                         Specify the unit of measurement that is used for input
                         and output. Can be any of cm, inch, mm, native,
@@ -167,25 +168,29 @@ optional arguments:
   --sign-chain pemfile  When signing a PDF, this gives the PEM-formatted
                         certificate chain file. Can be omitted if this should
                         not be included in the PKCS#7 signature.
-  --signer name         The name of the person signing the document.
+  --signer name         The name of the person responsible for signing the
+                        document.
   --sign-location hostname
-                        The location of the signing, usually a hostname.
+                        The location of the signing; usually this is the
+                        hostname of the computer that the signature is
+                        generated on.
   --sign-contact-info infotext
                         A contact information field under which the signer can
                         be reached. Usually a phone number of email address.
   --sign-reason reason  The reason why the document was signed.
   --sign-page pageno    Page number on which the signature should be
                         displayed. Defaults to 1.
-  --sign-font pfbfile   To be able to include text in the signature, a T1 font
-                        must be included into the PDF. This gives the filename
-                        of the font that is to be used for that purpose. Must
-                        be in PFB (PostScript Font Binary) file format and
-                        will be included in the result PDF in full. Defaults
-                        to the Bitstream Charter Serif font that is included
-                        within pdfminify.
+  --sign-font pfbfile   To be able to include metadata text in the signature
+                        form, a T1 font must be included into the PDF. This
+                        gives the filename of the font that is to be used for
+                        that purpose. Must be in PFB (PostScript Font Binary)
+                        file format and will be included in the result PDF in
+                        full (i.e., not reduced to the glyphs that are
+                        actually needed). Defaults to the Bitstream Charter
+                        Serif font that is included within pdfminify.
   --sign-pos x,y        Determines where the signature will be placed on the
                         page. Units are determined by the --unit variable and
-                        position is relative to lower left corner.
+                        the position is relative to lower left corner.
   --embed-payload path  Embed an opaque file as a payload into the PDF as a
                         valid PDF object. This is useful only if you want to
                         place an easter egg inside your PDF file.
