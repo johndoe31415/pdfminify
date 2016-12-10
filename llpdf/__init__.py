@@ -26,6 +26,8 @@ from .PDFWriter import PDFWriter
 from .Measurements import Measurements
 from .Logging import configure_logging
 
-VERSION_TUPLE = (0, 1, 0)
+__RELEASE_VERSION = 0
+__GIT_VERSION = 1
+VERSION_TUPLE = (0, 1, __RELEASE_VERSION)
 VERSION_INT = sum(value << (pos * 8) for (pos, value) in enumerate(reversed(VERSION_TUPLE)))
 VERSION = "%d.%02d.%02d" % VERSION_TUPLE
