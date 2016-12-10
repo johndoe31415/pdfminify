@@ -28,9 +28,10 @@ import argparse
 import textwrap
 
 class FriendlyArgumentParser(argparse.ArgumentParser):
-	def __init__(self, *args, **kwargs):
+	def __init__(self, additional_help = None, *args, **kwargs):
 		argparse.ArgumentParser.__init__(self, *args, **kwargs)
 		self.__silent_error = False
+		self.__additional_help = additional_help
 
 	def setsilenterror(self, silenterror):
 		self.__silent_error = silenterror
@@ -43,6 +44,11 @@ class FriendlyArgumentParser(argparse.ArgumentParser):
 				print(line, file = sys.stderr)
 			print(file = sys.stderr)
 			self.print_help(file = sys.stderr)
+			if self.__additional_help is not None:
+				for paragraph in self.__additional_help:
+					print(file = sys.stderr)
+					for line in textwrap.wrap(paragraph):
+						print(line, file = sys.stderr)
 			sys.exit(1)
 
 def baseint(value, default_base = 10):
