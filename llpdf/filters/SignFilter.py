@@ -169,7 +169,7 @@ class SignFilter(PDFFilter):
 		for (varname, replacement) in signform_vars.items():
 			key = ("${" + varname + "}").encode("ascii")
 			signform_data = signform_data.replace(key, replacement)
-		signform.set_stream(EncodedObject.create(signform_data, compress = False))
+		signform.set_stream(EncodedObject.create(signform_data, compress = True))
 		return signform_xref
 
 	def _generate_lock(self):
