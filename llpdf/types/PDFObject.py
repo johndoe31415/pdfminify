@@ -24,13 +24,12 @@ import re
 from llpdf.repr import PDFParser
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
-from llpdf.img.PDFImage import PDFImage
 from llpdf.FileRepr import StreamRepr
 from llpdf.EncodeDecode import EncodedObject
 from .Comparable import Comparable
 
 class PDFObject(Comparable):
-	_OBJ_RE = re.compile("^(?P<obj_header>(?P<objid>\d+)\s+(?P<gennum>\d+)\s+obj?)")
+	_OBJ_RE = re.compile(r"^(?P<obj_header>(?P<objid>\d+)\s+(?P<gennum>\d+)\s+obj?)")
 
 	def __init__(self, objid, gennum, rawdata):
 		assert(objid is not None)
@@ -125,10 +124,6 @@ class PDFObject(Comparable):
 	def gennum(self):
 		return self._gennum
 
-	@property
-	def rawdata(self):
-		return self._rawdata
-
 	@classmethod
 	def parse(cls, f):
 		pos = f.tell()
@@ -186,4 +181,3 @@ class PDFObject(Comparable):
 
 	def __str__(self):
 		return "PDFObject<ID=%d, gen=%d, %d bytes>" % (self.objid, self.gennum, len(self))
-

@@ -184,5 +184,3 @@ class PDFAFilter(PDFFilter):
 						self._pdf.replace_object(pdf_object)
 
 						font_descriptor_obj.content[PDFName("/CIDSet")] = pdf_object.xref
-
-

@@ -20,16 +20,14 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import re
-import collections
 import logging
 
+from llpdf.repr import PDFParser, GraphicsParser
 from .img.PDFImage import PDFImage
 from .types.PDFObject import PDFObject
 from .types.PDFName import PDFName
 from .types.PDFXRef import PDFXRef
 from .types.XRefTable import XRefTable
-from llpdf.repr import PDFParser, GraphicsParser
 from .FileRepr import StreamRepr
 
 class PDFFile(object):
@@ -63,7 +61,7 @@ class PDFFile(object):
 		pos = self._f.tell()
 		after_hdr = self._f.readline()
 		if (after_hdr[0] != ord("%")) or any(value & 0x80 != 0x80 for value in after_hdr[ 1 : 5 ]):
-			self._log.warn("PDF seems to violate standard, bytes read in second line are %s.", after_hdr)
+			self._log.warning("PDF seems to violate standard, bytes read in second line are %s.", after_hdr)
 			self._f.seek(pos)
 		return version.rstrip(b"\r\n ")
 
@@ -100,11 +98,8 @@ class PDFFile(object):
 		for obj in self.get_objects_that_reference(img_object.xref):
 			if obj.is_pattern:
 				print("Referenced by pattern %s" % (obj), obj.content)
-				matrix = obj.content.get(PDFName("/Matrix"))
 				bbox = obj.content.get(PDFName("/BBox"))
-				(scalex, scaley) = (matrix[0], matrix[3])
 				(width, height) = (bbox[2] - bbox[0], bbox[3] - bbox[1])
-				#return (width * scalex, height * scaley)
 				return (width, height)
 			else:
 				print("Cannot determine phyiscal extents of image, scaling probably done in page code :-(")
@@ -177,7 +172,7 @@ class PDFFile(object):
 				length_obj = self.lookup(length_xref)
 				length = length_obj.content
 				if not isinstance(length, int):
-					self._log.warn("Indirect length reference supposed to point to integer value, but points to %s (%s)", length_obj, length)
+					self._log.warning("Indirect length reference supposed to point to integer value, but points to %s (%s)", length_obj, length)
 				else:
 					if length != len(obj):
 						obj.truncate(length)
@@ -211,7 +206,7 @@ class PDFFile(object):
 						self._log.trace("Will parse XRef stream at offset 0x%x referenced from 0x%x." % (xref_offset, marker.prev_offset))
 						xref_object = PDFObject.parse(self._f)
 						if xref_object is None:
-							self._log.error("Could not parse a valid type /XRef object at 0x%x. Corrupt PDF?" % (xref_offset))
+							self._log.error("Could not parse a valid type /XRef object at 0x%x. Corrupt PDF?", xref_offset)
 						else:
 							self._trailer = xref_object.content
 							assert(self._trailer[PDFName("/Type")] == PDFName("/XRef"))
@@ -313,4 +308,3 @@ class PDFFile(object):
 	def replace_object(self, obj):
 		self._objs[(obj.objid, obj.gennum)] = obj
 		return self
-

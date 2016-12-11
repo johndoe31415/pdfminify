@@ -71,4 +71,3 @@ class NaiveDebuggingCanvas(object):
 			x = (pt1[0] * t) + (pt2[0] * mt)
 			y = (pt1[1] * t) + (pt2[1] * mt)
 			self._emit(x, y)
-

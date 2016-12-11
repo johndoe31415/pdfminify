@@ -20,7 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import time
 import subprocess
 import logging
 from tempfile import NamedTemporaryFile

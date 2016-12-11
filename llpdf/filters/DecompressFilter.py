@@ -22,7 +22,6 @@
 
 from .PDFFilter import PDFFilter
 from llpdf.EncodeDecode import EncodedObject
-from llpdf.types.PDFName import PDFName
 
 class DecompressFilter(PDFFilter):
 	def run(self):

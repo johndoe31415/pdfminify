@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
 	log = logging.getLogger("llpdf.foobar.barfoo")
 	log.error("This is an error")
-	log.warn("This is a warning")
+	log.warning("This is a warning")
 	log.info("This is an information")
 	log.debug("This is debug drivel")
 	log.trace("Trace message")
@@ -83,5 +83,3 @@ if __name__ == "__main__":
 
 	print(LogLevel.getbyname("nOrMaL"))
 	print(LogLevel.getnames())
-
-

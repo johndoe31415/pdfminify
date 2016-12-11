@@ -20,7 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import collections
 from .PDFFilter import PDFFilter
 from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
@@ -36,4 +35,3 @@ class FlattenImageOptimization(PDFFilter):
 
 				flattened_image_obj = PDFObject.create_image(image_obj.xref.objid, image_obj.xref.gennum, flattened_image)
 				self._pdf.replace_object(flattened_image_obj)
-

@@ -48,4 +48,3 @@ class DeleteOrphanedObjectsFilter(PDFFilter):
 		for obj_xref in unused_objects:
 			self._optimized(len(self._pdf.lookup(obj_xref)), 0)
 			self._pdf.delete_object(obj_xref.objid, obj_xref.gennum)
-

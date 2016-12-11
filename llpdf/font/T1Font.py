@@ -21,9 +21,7 @@
 #
 
 import re
-import enum
 import struct
-import logging
 import string
 from llpdf.FileRepr import StreamRepr
 from llpdf.types.PDFName import PDFName
@@ -31,10 +29,8 @@ from llpdf.types.PDFObject import PDFObject
 from llpdf.EncodeDecode import EncodedObject
 from llpdf.font.T1PRNG import T1PRNG
 from llpdf.font.T1Glyph import T1Glyph
-from llpdf.font.T1Canvas import NaiveDebuggingCanvas
-from llpdf.font.T1Interpreter import T1Interpreter
 from llpdf.types.Flags import FontDescriptorFlag
-from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName, character_names, build_encoding_array
+from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName, build_encoding_array
 
 class T1Font(object):
 	_T1_FONT_KEY = 55665

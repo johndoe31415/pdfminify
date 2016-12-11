@@ -25,7 +25,7 @@ import re
 import string
 
 class OpenSSLVersion(object):
-	_OPENSSL_VERSION_REGEX = re.compile("OpenSSL (?P<major>\d+)\.(?P<minor>\d+)\.(?P<fixlevel>\d+)(?P<patch>[a-z])?(-fips)?\s+(?P<date>\d+ [A-Za-z]{3} \d{4})")
+	_OPENSSL_VERSION_REGEX = re.compile(r"OpenSSL (?P<major>\d+)\.(?P<minor>\d+)\.(?P<fixlevel>\d+)(?P<patch>[a-z])?(-fips)?\s+(?P<date>\d+ [A-Za-z]{3} \d{4})")
 	def __init__(self, text_string):
 		self._text = text_string
 

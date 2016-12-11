@@ -30,7 +30,7 @@ from .filters.Relinker import Relinker
 
 class PDFTemplate(object):
 	_log = logging.getLogger("llpdf.PDFTemplate")
-	_OBJECT_NAME_RE = re.compile("^(?P<inout>[<>])\s*(?P<xref>\d+)\s*=\s*(?P<name>.*)$")
+	_OBJECT_NAME_RE = re.compile(r"^(?P<inout>[<>])\s*(?P<xref>\d+)\s*=\s*(?P<name>.*)$")
 
 	def __init__(self, resource_data):
 		self._objs = { }
@@ -41,27 +41,32 @@ class PDFTemplate(object):
 		self._read_header()
 		self._read_objects()
 
+
 	def _read_header_line(self):
-		pos = self._f.tell()
-		try:
-			line = self._f.readline().decode("ascii")
-			result = self._OBJECT_NAME_RE.match(line)
-			result = result.groupdict()
-			is_input = (result["inout"] == "<")
-			xref = int(result["xref"])
-			name = result["name"]
-			if is_input:
-				self._inputs[name] = xref
-			else:
-				self._outputs[name] = xref
-		except:
-			self._f.seek(pos)
+		line = self._f.readline().decode("ascii")
+		result = self._OBJECT_NAME_RE.match(line)
+		if result is None:
 			return False
+		result = result.groupdict()
+		is_input = (result["inout"] == "<")
+		xref = int(result["xref"])
+		name = result["name"]
+		if is_input:
+			self._inputs[name] = xref
+		else:
+			self._outputs[name] = xref
 		return True
+
+	def _read_header_line_if_exists(self):
+		pos = self._f.tell()
+		success = self._read_header_line()
+		if not success:
+			self._f.seek(pos)
+		return success
 
 	def _read_header(self):
 		while True:
-			if not self._read_header_line():
+			if not self._read_header_line_if_exists():
 				break
 
 	def _read_objects(self):
@@ -98,7 +103,7 @@ class PDFTemplate(object):
 
 		internal_references = set(PDFXRef(objid, gennum) for (objid, gennum) in self._objs.keys())
 
-		for name in self._inputs.keys():
+		for name in self._inputs:
 			old_xref = PDFXRef(self._inputs[name], 0)
 			new_xref = self._input_values[name]
 			relinker.relink(old_xref, new_xref)
@@ -128,4 +133,3 @@ class PDFTemplate(object):
 
 	def __str__(self):
 		return "PDFTemplate<%d objects, %d inputs: {%s}, %d outputs: {%s}>" % (len(self), len(self._inputs), ", ".join(sorted(self._inputs.keys())), len(self._outputs), ", ".join(sorted(self._outputs.keys())))
-

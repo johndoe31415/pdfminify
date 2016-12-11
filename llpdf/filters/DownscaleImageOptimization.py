@@ -26,7 +26,6 @@ from llpdf.Exceptions import UnsupportedImageException
 from llpdf.img.ImageReformatter import ImageReformatter
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.PDFName import PDFName
-from llpdf.types.TransformationMatrix import TransformationMatrix
 from llpdf.interpreter.GraphicsInterpreter import GraphicsInterpreter
 
 class DownscaleImageOptimization(PDFFilter):
@@ -79,7 +78,7 @@ class DownscaleImageOptimization(PDFFilter):
 			try:
 				image = self._pdf.get_image(img_xref)
 			except UnsupportedImageException as e:
-				self._log.warn("Ignoring unsupported image %s: %s" % (img_xref, e))
+				self._log.warning("Ignoring unsupported image %s: %s", img_xref, e)
 				continue
 			self._save_image(image, img_xref, "original")
 
@@ -98,5 +97,3 @@ class DownscaleImageOptimization(PDFFilter):
 
 			self._optimized(image.total_size, resampled_image.total_size)
 			self._replace_image(img_xref, resampled_image)
-
-

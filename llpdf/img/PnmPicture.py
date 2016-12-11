@@ -164,7 +164,7 @@ class PnmPicture(object):
 			if encoding == "binary":
 				raw_data = bytearray(f.read())
 			else:
-				raw_data = bytearray(pixelcnt * bytes_per_pixel)
+				raw_data = bytearray(pixelcnt * bytes_per_pixel)		# TODO: undefined "bytes_per_pixel"
 				for i in range(pixelcnt * bytes_per_pixel):
 					raw_data[i] = int(f.readline())
 			# TODO: This will fail for ASCII Bitmaps
@@ -522,4 +522,3 @@ if __name__ == "__main__":
 #		img = PnmPicture.read_file(infilename)
 #		img.write_file(outfilename)
 #		print(img)
-

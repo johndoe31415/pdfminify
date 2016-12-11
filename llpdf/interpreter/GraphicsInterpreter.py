@@ -26,7 +26,6 @@ from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.PDFObject import PDFObject
 from llpdf.types.TransformationMatrix import TransformationMatrix
-from llpdf.Measurements import Measurements
 
 class GraphicsInterpreter(object):
 	_log = logging.getLogger("llpdf.interpreter.GraphicsInterpreter")
@@ -74,9 +73,6 @@ class GraphicsInterpreter(object):
 			return
 
 		image_resource = self._pdf_lookup.lookup(pattern_resource_xrefs[0])
-		width_px = image_resource.content[PDFName("/Width")]
-		height_px = image_resource.content[PDFName("/Height")]
-
 		native_extents = pattern_matrix.extents(pattern_bbox)
 
 		self._log.debug("Pattern draw object of %s found with CTM %s and pattern matrix %s; %s", image_resource, self._gs["CTM"], pattern_matrix, native_extents.format())

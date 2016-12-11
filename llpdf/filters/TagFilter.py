@@ -30,7 +30,7 @@ class TagFilter(PDFFilter):
 		if creator == "":
 			creator += "pdfminify " + llpdf.VERSION
 		else:
-			creator = re.sub(" \(pdfminify.*", "", creator)
+			creator = re.sub(r" \(pdfminify.*", "", creator)
 			creator += " (pdfminify " + llpdf.VERSION + ")"
 
 		self._pdf.set_info("Creator", creator)

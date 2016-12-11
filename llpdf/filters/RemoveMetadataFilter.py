@@ -23,7 +23,8 @@
 from .PDFFilter import PDFFilter
 
 class RemoveMetadataFilter(PDFFilter):
-	def _strip_key(self, key):
+	@staticmethod
+	def _strip_key(key):
 		if key.value.startswith("/PTEX"):
 			return True
 		return False

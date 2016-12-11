@@ -20,7 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import collections
 from llpdf.types.PDFName import PDFName
 from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.MarkerObject import MarkerObject
@@ -33,7 +32,8 @@ class PDFSerializer(object):
 		self._offset = 0
 		self._marks = { }
 
-	def _serialize_hexbytes(self, obj):
+	@staticmethod
+	def _serialize_hexbytes(obj):
 		yield "<"
 		yield obj.hex()
 		yield ">"
@@ -138,4 +138,3 @@ if __name__ == "__main__":
 		},
 	}
 	print(serializer.serialize(obj))
-

@@ -42,7 +42,6 @@
 #                                                                 [                                         ]
 #                                                                 [e a_ + f c_ + e_    e b_ + f d_ + f_    1]
 
-import collections
 from llpdf.Measurements import Measurements
 
 class NativeImageExtents(object):

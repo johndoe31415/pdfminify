@@ -20,8 +20,6 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-import os
-import datetime
 import llpdf
 import subprocess
 import pkgutil
@@ -78,7 +76,8 @@ class SignFilter(PDFFilter):
 		self._pdf.replace_object(obj)
 		return PDFXRef(objid, 0)
 
-	def _property_dict(self):
+	@staticmethod
+	def _property_dict():
 		openssl_version = OpenSSLVersion.get()
 		properties = {
 			PDFName("/App"): {

@@ -188,7 +188,8 @@ class XRefTable(object):
 	def _to_int(data):
 		return sum(value << (byteno * 8) for (byteno, value) in enumerate(reversed(data)))
 
-	def _write_xref_entry(self, f, offset, gennum, f_or_n):
+	@staticmethod
+	def _write_xref_entry(f, offset, gennum, f_or_n):
 		assert(f_or_n in [ "f", "n" ])
 		f.writeline("%010d %05d %s " % (offset, gennum, f_or_n))
 
@@ -281,4 +282,3 @@ if __name__ == "__main__":
 	x.parse_xref_object(data, 0, [ 1, 3, 1 ])
 	x.dump()
 	print(x)
-

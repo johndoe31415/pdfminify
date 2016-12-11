@@ -696,7 +696,7 @@ def build_encoding_array(codec):
 	entries = [ ]
 	last_codepoint = None
 	for codepoint in range(256):
-		char = chr(codepoint)
+		char = bytes([ codepoint ]).decode(codec)
 		psname = character_names.get(char)
 		if psname is not None:
 			psname = PDFName("/" + psname)

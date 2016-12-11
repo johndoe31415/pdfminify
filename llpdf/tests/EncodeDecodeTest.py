@@ -179,4 +179,3 @@ class EncodeDecodeTest(unittest.TestCase):
 			Z7Ah2fmL3VnUfwd/E9cGGTJf/DtLNz+73O5zQLPeK+92Y+QCGyYdf3m79/lmAOkKSOw="""))
 		pixel_data = self._data["prng"]
 		self._test_png_predictors(columns, encoded_data, pixel_data)
-

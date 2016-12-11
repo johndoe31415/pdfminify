@@ -29,4 +29,3 @@ class ExplicitLengthFilter(PDFFilter):
 		for obj in self._pdf:
 			if isinstance(obj.content, dict) and (PDFName("/Length") in obj.content) and isinstance(obj.content[PDFName("/Length")], PDFXRef) and (obj.stream is not None):
 				obj.content[PDFName("/Length")] = len(obj.stream)
-

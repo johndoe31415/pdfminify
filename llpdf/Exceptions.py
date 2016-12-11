@@ -20,4 +20,5 @@
 #	Johannes Bauer <JohannesBauer@gmx.de>
 #
 
-class UnsupportedImageException(Exception): pass
+class UnsupportedImageException(Exception):
+	pass

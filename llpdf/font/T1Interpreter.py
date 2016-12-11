@@ -24,7 +24,8 @@ import logging
 from llpdf.font.T1Command import T1Command, T1CommandCode
 from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName
 
-class _T1ExecutionFinishedException(Exception): pass
+class _T1ExecutionFinishedException(Exception):
+	pass
 
 class T1Interpreter(object):
 	_log = logging.getLogger("llpdf.font.T1Interpreter")
@@ -90,7 +91,7 @@ class T1Interpreter(object):
 					else:
 						self.run(subr.parse())
 		elif cmd.cmdcode == T1CommandCode.callothersubr:
-			self._log.warn("Unsupported right now: %s", cmd)
+			self._log.warning("Unsupported right now: %s", cmd)
 		elif cmd.cmdcode in [ T1CommandCode.vstem, T1CommandCode.hstem, T1CommandCode.vstem3, T1CommandCode.hstem3, T1CommandCode.dotsection ]:
 			# Hint commands, ignore
 			pass
@@ -117,7 +118,6 @@ class T1Interpreter(object):
 		elif cmd.cmdcode in [ T1CommandCode.endchar, T1CommandCode.retrn ]:
 			raise _T1ExecutionFinishedException()
 		elif cmd.cmdcode in [  T1CommandCode.div, T1CommandCode.pop ]:
-			print(cmd)
 			# Not handled at the moment
 			pass
 		else:

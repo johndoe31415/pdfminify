@@ -66,10 +66,9 @@ class Relinker(object):
 			relinked_objects.append(relinked_object)
 
 		# Then delete all old objects
-		for delete_obj_xref in self._old_to_new.keys():
+		for delete_obj_xref in self._old_to_new:
 			self._pdf.delete_object(delete_obj_xref.objid, delete_obj_xref.gennum)
 
 		# And insert the relinked ones
 		for relinked_object in relinked_objects:
 			self._pdf.replace_object(relinked_object)
-

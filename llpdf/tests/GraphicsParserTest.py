@@ -41,7 +41,7 @@ class GraphicsParserTest(unittest.TestCase):
 
 	def test_array_arg(self):
 		self.assertEqual(GraphicsParser.parse("<</Foo /Bar>>TJ"), [ GraphCommand("TJ", { PDFName("/Foo"): PDFName("/Bar") }) ])
-		self.assertEqual(GraphicsParser.parse("[(some in-depth )3(things\).)]TJ"), [ GraphCommand("TJ", [ "(some in-depth )", 3, "(things\).)" ])])
+		self.assertEqual(GraphicsParser.parse(r"[(some in-depth )3(things\).)]TJ"), [ GraphCommand("TJ", [ "(some in-depth )", 3, "(things\).)" ])])
 
 	def test_real_pdf_data(self):
 		result = GraphicsParser.parse("""
@@ -115,4 +115,3 @@ class GraphicsParserTest(unittest.TestCase):
 			GraphCommand("ET"),
 			GraphCommand("Q"),
 		])
-

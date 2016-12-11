@@ -112,4 +112,3 @@ if __name__ == "__main__":
 	wrapper = TextWrapper(font, font_size = 8, text_width = 100, prefer_break_on = "")
 	print(wrapper)
 	print(wrapper.wrap_paragraphs(["A"]))
-

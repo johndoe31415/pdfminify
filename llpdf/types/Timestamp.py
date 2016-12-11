@@ -25,7 +25,7 @@ import datetime
 import re
 
 class Timestamp(object):
-	_PDF_FORMAT_RE = re.compile("D:(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})(?P<tzhrs>[+-]\d{2})'(?P<tzmins>\d{2})'")
+	_PDF_FORMAT_RE = re.compile(r"D:(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})(?P<tzhrs>[+-]\d{2})'(?P<tzmins>\d{2})'")
 
 	def __init__(self, ts_datetime, offset_mins):
 		assert(isinstance(ts_datetime, datetime.datetime))

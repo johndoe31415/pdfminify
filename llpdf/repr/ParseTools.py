@@ -64,4 +64,3 @@ def parse_using(text, parser_class):
 		print((" " * (e.column - 1)) + "^")
 		raise
 	return result
-

@@ -109,4 +109,3 @@ def parse(text):
 
 if __name__ == "__main__":
 	print(parse("(Foo( Bar))"))
-

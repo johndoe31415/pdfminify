@@ -54,4 +54,3 @@ class MarkerObject(object):
 			return "RawMarkerObject<%s: %s>" % (self.name, self.raw)
 		else:
 			return "ChildMarkerObject<%s: %s>" % (self.name, str(self.child))
-

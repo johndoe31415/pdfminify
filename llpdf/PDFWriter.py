@@ -22,9 +22,8 @@
 
 import logging
 from llpdf.repr.PDFSerializer import PDFSerializer
-from llpdf.types.PDFXRef import PDFXRef
 from llpdf.types.CompressedObjectContainer import CompressedObjectContainer
-from llpdf.types.XRefTable import XRefTable, UncompressedXRefEntry, CompressedXRefEntry, ReservedXRefEntry
+from llpdf.types.XRefTable import XRefTable, UncompressedXRefEntry, ReservedXRefEntry
 from llpdf.FileRepr import FileWriterDecorator
 
 class PDFWriter(object):
@@ -141,6 +140,3 @@ class PDFWriter(object):
 		self._write_compressed_objs()
 		self._write_xrefs()
 		self._write_finish()
-
-
-

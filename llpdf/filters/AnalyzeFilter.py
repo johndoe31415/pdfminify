@@ -143,4 +143,3 @@ class AnalyzeFilter(PDFFilter):
 			objtype = obj.getattr(PDFName("/Type"))
 			if objtype == PDFName("/Sig"):
 				self._print_sig(obj)
-

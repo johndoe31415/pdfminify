@@ -22,7 +22,6 @@
 
 import enum
 import zlib
-import itertools
 from llpdf.types.PDFName import PDFName
 
 class Filter(enum.IntEnum):
@@ -291,4 +290,3 @@ if __name__ == "__main__":
 	print(EncodedObject.create(data, predict = True, columns = len(data) // 25))
 	print(EncodedObject.create(data, predict = False))
 	print(data)
-

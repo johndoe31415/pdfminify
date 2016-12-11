@@ -21,8 +21,6 @@
 #
 
 import subprocess
-import re
-import string
 
 class X509Certificate(object):
 	def __init__(self, cert_filename, cert_format = "pem"):

@@ -128,4 +128,3 @@ class PDFParserTest(unittest.TestCase):
 			PDFName("/CharSet"):	b"/F",
 			PDFName("/FontFile"):	PDFXRef(2992, 0),
 		})
-
