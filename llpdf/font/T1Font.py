@@ -33,6 +33,7 @@ from llpdf.font.T1PRNG import T1PRNG
 from llpdf.font.T1Glyph import T1Glyph
 from llpdf.font.T1Canvas import NaiveDebuggingCanvas
 from llpdf.font.T1Interpreter import T1Interpreter
+from llpdf.types.Flags import FontDescriptorFlag
 from llpdf.font.PostScriptEnums import PostScriptStandardCharacterName, character_names, build_encoding_array
 
 class T1Font(object):
@@ -190,14 +191,14 @@ class T1Font(object):
 			PDFName("/ItalicAngle"):	0,
 			PDFName("/FontFile"):		fontfile_xref,
 			PDFName("/FontName"):		self.get_font_name(),
-			PDFName("/Flags"):			4,		# TODO?
+			PDFName("/Flags"):			int(FontDescriptorFlag.Symbolic),
 			PDFName("/FontBBox"):		bbox,
 			PDFName("/Ascent"):			bbox[3],
 			PDFName("/CapHeight"):		bbox[3],
 			PDFName("/Descent"):		bbox[1],
 			PDFName("/CharSet"):		self.charset_string,
 			PDFName("/MissingWidth"):	self.get_missing_width(),
-			PDFName("/StemV"):			30,		# TODO?
+#			PDFName("/StemV"):			30,		# TODO: Do we need this?
 		}
 		obj = PDFObject.create(objid, 0, content)
 		return obj
