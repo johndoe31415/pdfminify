@@ -38,7 +38,7 @@ class X509Certificate(object):
 		prefixes = [ "subject= ", "issuer= ", "serial=" ]
 		for line in output:
 			for prefix in prefixes:
-				if line.startswith(prefix):
+				if line.startswith(prefix.strip()):
 					results[prefix] = line[len(prefix): ]
 					break
 		self._subject = results["subject= "]
