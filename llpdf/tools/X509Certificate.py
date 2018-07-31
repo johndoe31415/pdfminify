@@ -35,11 +35,11 @@ class X509Certificate(object):
 		output = subprocess.check_output([ "openssl", "x509", "-in", filename, "-inform", self._cert_format, "-noout", "-subject", "-issuer", "-serial" ])
 		output = output.decode().split("\n")
 		results = { }
-		prefixes = [ "subject= ", "issuer= ", "serial=" ]
+		prefixes = [ "subject=", "issuer=", "serial=" ]
 		for line in output:
 			for prefix in prefixes:
 				if line.startswith(prefix):
-					results[prefix] = line[len(prefix): ]
+					results[prefix] = line[len(prefix): ].lstrip()
 					break
 		self._subject = results["subject= "]
 		self._issuer = results["issuer= "]
