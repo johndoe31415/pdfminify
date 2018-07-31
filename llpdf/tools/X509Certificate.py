@@ -41,8 +41,8 @@ class X509Certificate(object):
 				if line.startswith(prefix):
 					results[prefix] = line[len(prefix): ].lstrip()
 					break
-		self._subject = results["subject= "]
-		self._issuer = results["issuer= "]
+		self._subject = results["subject="]
+		self._issuer = results["issuer="]
 		self._serial = int(results["serial="], 16)
 
 	@property
