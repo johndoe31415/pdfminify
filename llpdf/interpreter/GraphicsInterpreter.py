@@ -55,8 +55,11 @@ class GraphicsInterpreter(object):
 	def _callback_fill_rect(self):
 		if self._draw_callback is None:
 			return
-
-		patterns = self._page_resources.content.get(PDFName("/Pattern"))
+		if isinstance(self._page_resources, PDFObject):
+			content = self._page_resources.content
+		else:
+			content = self._page_resources
+		patterns = content.get(PDFName("/Pattern"))
 		if patterns is None:
 			return
 
