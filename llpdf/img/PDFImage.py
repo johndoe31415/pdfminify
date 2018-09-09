@@ -47,8 +47,8 @@ class PDFImage(object):
 		self._alpha = None
 
 	def set_alpha(self, alpha_image):
-		assert(self.width == alpha_image.width)
-		assert(self.height == alpha_image.height)
+		if (self.width != alpha_image.width) or (self.height != alpha_image.height):
+			raise Exception("Tried to set alpha channel of different size than image. Image %d x %d, alpha %d x %d" % (self.width, self.height, alpha_image.width, alpha_image.height))
 		self._alpha = alpha_image
 
 	@classmethod
