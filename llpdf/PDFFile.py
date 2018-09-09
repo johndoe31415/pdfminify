@@ -183,10 +183,9 @@ class PDFFile(object):
 
 	def _read_trailer(self):
 		self._log.debug("Started reading trailer at 0x%x.", self._f.tell())
-		(trailer_data, delimiter) = self._f.read_until_token(b"startxref")
+		trailer_data = self._f.read_until_token(b"startxref", rewind = True)
 		trailer_data = trailer_data.decode("latin1")
 		self._trailer = PDFParser.parse(trailer_data)
-		self._f.seek(self._f.tell() - len(delimiter))
 
 	def _read_endfile(self):
 		self._log.debug("Reading end-of-file data at 0x%x.", self._f.tell())
@@ -270,6 +269,7 @@ class PDFFile(object):
 		return image
 
 	def get_info(self, key):
+		print(self.trailer)
 		info_node_xref = self.trailer[PDFName("/Info")]
 		info_node = self.lookup(info_node_xref)
 		key = PDFName("/" + key)

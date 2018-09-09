@@ -46,8 +46,8 @@ class PDFObject(Comparable):
 				content = rawdata
 				self._stream = None
 			else:
-				(stream_data, end_marker) = strm.read_until_token(b"endstream")
-				content = stream_begin[0]
+				stream_data = strm.read_until_token(b"endstream")
+				content = stream_begin
 				self._stream = stream_data
 
 			content = content.decode("latin1")
@@ -132,13 +132,13 @@ class PDFObject(Comparable):
 		object_start = f.read_next_token()
 		object_data = f.read_until_token(b"endobj")
 
-		if (object_start is None) or (object_data is None) or (object_start[0] != b"obj"):
+		if (object_start is None) or (object_data is None) or (object_start != b"obj"):
 			f.seek(pos)
 			return None
 
-		objid = int(objid[0].decode("ascii"))
-		gennum = int(gennum[0].decode("ascii"))
-		return cls(objid = objid, gennum = gennum, rawdata = object_data[0])
+		objid = int(objid.decode("ascii"))
+		gennum = int(gennum.decode("ascii"))
+		return cls(objid = objid, gennum = gennum, rawdata = object_data)
 
 	@property
 	def content(self):
