@@ -27,8 +27,9 @@ import logging
 import argparse
 import llpdf
 import llpdf.tests
-from FriendlyArgumentParser import FriendlyArgumentParser
-from FilesizeFormatter import FilesizeFormatter
+import pdfminify
+from pdfminify.FriendlyArgumentParser import FriendlyArgumentParser
+from pdfminify.FilesizeFormatter import FilesizeFormatter
 
 python_version = sys.version_info[:3]
 min_python_version = (3, 5, 0)
@@ -62,7 +63,7 @@ def _intrange(minvalue, maxvalue):
 	return convert
 
 additional_help = [
-	"pdfminify version: " + llpdf.VERSION,
+	"pdfminify version %s; llpdf version: %s" % (pdfminify.VERSION, llpdf.VERSION),
 ]
 
 parser = FriendlyArgumentParser(additional_help = additional_help)
