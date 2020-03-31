@@ -6,7 +6,7 @@ with open("README.md") as f:
 setuptools.setup(
 	name = "pdfminify",
 	packages = setuptools.find_packages(),
-	version = "0.2.0",
+	version = "0.2.1",
 	license = "gpl-3.0",
 	description = "PDF minification tool",
 	long_description = long_description,
@@ -14,8 +14,8 @@ setuptools.setup(
 	author = "Johannes Bauer",
 	author_email = "joe@johannes-bauer.com",
 	url = "https://github.com/johndoe31415/pdfminify",
-	download_url = "https://github.com/johndoe31415/pdfminify/archive/0.2.0.tar.gz",
-	keywords = [ "pdf", "reader", "writer", "document", "parser" ],
+	download_url = "https://github.com/johndoe31415/pdfminify/archive/0.2.1.tar.gz",
+	keywords = [ "pdf", "minifier" ],
 	install_requires = [ "llpdf>=0.0.4" ],
 	entry_points = {
 		"console_scripts": [

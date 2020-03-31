@@ -62,11 +62,9 @@ def _intrange(minvalue, maxvalue):
 		return value
 	return convert
 
-additional_help = [
-	"pdfminify version %s; llpdf version: %s" % (pdfminify.VERSION, llpdf.VERSION),
-]
+epilog = "pdfminify version %s; llpdf version: %s" % (pdfminify.VERSION, llpdf.VERSION)
 
-parser = FriendlyArgumentParser(additional_help = additional_help)
+parser = FriendlyArgumentParser(prog = "pdfminify", description = "Minifies PDF files, can crop them, convert them to PDF/A-1b and sign them cryptographically.", epilog = epilog)
 parser.add_argument("-d", "--target-dpi", metavar = "dpi", type = int, default = 150, help = "Default resoulution to which images will be resampled at. Defaults to %(default)s dots per inch (dpi).")
 parser.add_argument("-j", "--jpeg-images", action = "store_true", help = "Convert images to JPEG format. This means that lossy compression is used that however often yields a much higher compression ratio.")
 parser.add_argument("--jpeg-quality", metavar = "percent", type = _intrange(0, 100), default = 85, help = "When converting images to JPEG format, the parameter gives the compression quality. It is an integer from 0-100 (higher is better, but creates also larger output files).")

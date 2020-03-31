@@ -48,7 +48,7 @@ Copyright and license details can be found in EXTERNAL_LICENSES.md.
 
 ## Usage
 <pre>
-$ ./pdfminify --help
+$ pdfminify
 usage: pdfminify [-h] [-d dpi] [-j] [--jpeg-quality percent]
                  [--no-downscaling] [--cropbox x,y,w,h]
                  [--unit {cm,inch,mm,native}] [--one-bit-alpha]
@@ -63,6 +63,9 @@ usage: pdfminify [-h] [-d dpi] [-j] [--jpeg-quality percent]
                  [--no-pdf-tagging] [--decompress-data] [--analyze]
                  [--dump-xref-table] [--no-filters] [-v]
                  pdf_in pdf_out
+
+Minifies PDF files, can crop them, convert them to PDF/A-1b and sign them
+cryptographically.
 
 positional arguments:
   pdf_in                Input PDF file.
@@ -196,6 +199,8 @@ optional arguments:
                         malformed PDF generation.
   -v, --verbose         Show verbose messages during conversation. Can be
                         specified multiple times to increase log level.
+
+pdfminify version 0.2.1; llpdf version: 0.0.4
 </pre>
 
 ## Bugs
