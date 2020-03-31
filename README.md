@@ -28,14 +28,15 @@ need an X.509 certificate and corresponding keypair. The signature will be
 included in the PDF in the form a banner with metadata and sophisticated PDF
 readers will be able to verify that the PDF has not been tampered with.
 
-# Requirements
-pdfminify needs at least Python 3.5. It furthermore uses the "identify" and
-"convert" utilities of ImageMagick. It uses the former to determine the width,
-height, colorspace and bits per component of image files and the latter to
-convert images from PNM (the internal format that pdfminify is capable of
-writing natively) to JPEG.
+## Requirements
+pdfminify needs at least Python 3.5 and the [llpdf Python
+package][https://github.com/johndoe31415/llpdf]. It furthermore uses the
+"identify" and "convert" utilities of ImageMagick. It uses the former to
+determine the width, height, colorspace and bits per component of image files
+and the latter to convert images from PNM (the internal format that pdfminify
+is capable of writing natively) to JPEG.
 
-# Acknowledgments
+## Acknowledgments
 pdfminify uses the Toy Parser Generator (TPG) of Christophe Delord
 (http://cdsoft.fr/tpg/). It is included (tpg.py file) and licensed under the
 GNU LGPL v2.1 or any later version. Despite its name, it is far from a toy. In
@@ -45,26 +46,7 @@ previous parsing experience. If you need parsing and use Python, TPG is *the*
 go-to solution I would recommend. Seriously, it's amazing. Check it out.
 Copyright and license details can be found in EXTERNAL_LICENSES.md.
 
-In order to be able to easily create PDF/A-1b files, pdfminify also includes
-the ICC sRGB color profile "sRGB_IEC61966-2-1_black scaled.icc". It is
-distributed under its own license which is included in the EXTERNAL_LICENSES.md
-file.
-
-When signing documents, a Type1 font is included in the resulting PDF in order
-to display metadata about the generated signature. As a default font, one of
-the Bitstream Charter fonts which was contributed to the X consortium
-(Bitstream Charter Serif) is included with pdfminify. It also has its own
-copyright and license notice in EXTERNAL_LICENSES.md.
-
-# License
-pdfminify is licensed under the GNU GPL v3 (except for external components as
-TPG, which has its own license). Later versions of the GPL are explicitly
-excluded.
-
-TPG (Toy Parser Generator), the ICC sRGB color profile and the Bitstream
-Charter font fall under their respective licenses (see EXTERNAL_LICENSES.md).
-
-# Usage
+## Usage
 <pre>
 $ ./pdfminify --help
 usage: pdfminify [-h] [-d dpi] [-j] [--jpeg-quality percent]
@@ -216,16 +198,7 @@ optional arguments:
                         specified multiple times to increase log level.
 </pre>
 
-# PDF reading/writing
-pdfminify uses its own PDF parser because for this particular purpose, neither
-PyPDF2 nor pdfrw (which I both tried to use) seem suitable. This PDF
-reader/writer is therefore is implemented in its own (included) library in the
-"llpdf" subdirectory. It's the "low-level PDF" library because in contrast to
-other PDF libraries, it has very little abstraction of the PDF file itself (and
-exposes all the ugly PDF internals to the poor user). Feel free to play around
-with it as you like!
-
-# Bugs
+## Bugs
 PDF is an inherently messy format and parsing it really isn't pretty. I've
 implemented only what I needed to implement in order to get my job done. I'm
 sure there's dozens of examples in which pdfminify just plainly doesn't work or
@@ -240,3 +213,10 @@ can fix it -- to be honest, PDF is so complicated that I'm not even sure that I
 can find what the issue is. In any case, be sure to include a minimal example
 PDF that demonstrates the issue in the bug report.
 
+## License
+pdfminify is licensed under the GNU GPL v3 (except for external components as
+TPG, which has its own license). Later versions of the GPL are explicitly
+excluded.
+
+TPG (Toy Parser Generator) falls under its respective license (see
+EXTERNAL_LICENSES.md).
