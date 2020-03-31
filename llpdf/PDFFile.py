@@ -1,5 +1,5 @@
 #	pdfminify - Tool to minify PDF files.
-#	Copyright (C) 2016-2016 Johannes Bauer
+#	Copyright (C) 2016-2020 Johannes Bauer
 #
 #	This file is part of pdfminify.
 #
@@ -269,7 +269,6 @@ class PDFFile(object):
 		return image
 
 	def get_info(self, key):
-		print(self.trailer)
 		info_node_xref = self.trailer[PDFName("/Info")]
 		info_node = self.lookup(info_node_xref)
 		key = PDFName("/" + key)
