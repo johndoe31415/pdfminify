@@ -30,7 +30,7 @@ readers will be able to verify that the PDF has not been tampered with.
 
 ## Requirements
 pdfminify needs at least Python 3.5 and the [llpdf Python
-package][https://github.com/johndoe31415/llpdf] at least v0.0.4. It furthermore
+package](https://github.com/johndoe31415/llpdf) at least v0.0.4. It furthermore
 uses the "identify" and "convert" utilities of ImageMagick. It uses the former
 to determine the width, height, colorspace and bits per component of image
 files and the latter to convert images from PNM (the internal format that
