@@ -19,6 +19,6 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-VERSION_TUPLE = (0, 0, 1)
+VERSION_TUPLE = (0, 2, 0)
 VERSION_INT = sum(value << (pos * 8) for (pos, value) in enumerate(reversed(VERSION_TUPLE)))
 VERSION = "%d.%d.%d" % VERSION_TUPLE
