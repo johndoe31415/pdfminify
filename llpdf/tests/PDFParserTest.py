@@ -1,5 +1,5 @@
 #	pdfminify - Tool to minify PDF files.
-#	Copyright (C) 2016-2016 Johannes Bauer
+#	Copyright (C) 2016-2020 Johannes Bauer
 #
 #	This file is part of pdfminify.
 #
@@ -127,4 +127,11 @@ class PDFParserTest(unittest.TestCase):
 			PDFName("/XHeight"):	0,
 			PDFName("/CharSet"):	b"/F",
 			PDFName("/FontFile"):	PDFXRef(2992, 0),
+		})
+
+	def test_pdf_comment(self):
+		self.assertEqual(PDFParser.parse("""<<
+			/Length 213 0 R		% Foobar
+		>>"""), {
+			PDFName("/Length"):			PDFXRef(213, 0),
 		})

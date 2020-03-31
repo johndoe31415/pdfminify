@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #	pdfminify - Tool to minify PDF files.
-#	Copyright (C) 2016-2016 Johannes Bauer
+#	Copyright (C) 2016-2020 Johannes Bauer
 #
 #	This file is part of pdfminify.
 #
@@ -47,32 +47,38 @@ class PDFParser(tpg.VerboseParser):
 		token string_content '[^\\()]+';
 		token string_escape_numeric '\\[0-7]{1,3}\s*';
 		token string_escape_char '\\.\s*';
+		token comment '%.*';
 
 
 		START/e -> PDFExpression/e
 		;
 
-		PDFExpression/e -> PDFXRef/e
-							| PDFDict/e
-							| PDFValue/e
-							| PDFString/e
-							| PDFArray/e
-							| PDFName/e
+		PDFExpression/e -> PDFXRef/e comment?
+							| PDFDict/e comment?
+							| PDFValue/e comment?
+							| PDFString/e comment?
+							| PDFArray/e comment?
+							| PDFName/e comment?
 		;
 
 		PDFDict/d -> start_dict								$ d = dict()
+						comment?
 						(
 							PDFName/k PDFExpression/v		$ d[k] = v
 						)*
+						comment?
 						end_dict
 		;
 
 		PDFArray/a -> start_array							$ a = list()
+						comment?
 						( PDFExpression/e					$ a.append(e)
-						)* end_array
+						)*
+						comment?
+						end_array
 		;
 
-		PDFName/e -> pdfname_token/e
+		PDFName/e -> pdfname_token/e comment?
 		;
 
 		PDFXRef/e -> integer/a integer/b 'R'				$ e = PDFXRef(a, b)
