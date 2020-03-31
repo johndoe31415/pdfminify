@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #	pdfminify - Tool to minify PDF files.
-#	Copyright (C) 2016-2016 Johannes Bauer
+#	Copyright (C) 2016-2020 Johannes Bauer
 #
 #	This file is part of pdfminify.
 #
@@ -61,7 +61,7 @@ def _intrange(minvalue, maxvalue):
 		return value
 	return convert
 
-additional_help = [ 
+additional_help = [
 	"pdfminify version: " + llpdf.VERSION,
 ]
 
@@ -137,32 +137,30 @@ log = logging.getLogger("llpdf")
 
 fsf = FilesizeFormatter()
 old_size = os.stat(args.infile).st_size
-with open(args.infile, "rb") as infile, open(args.outfile, "w+b") as outfile:
-	pdf = llpdf.PDFFile(infile)
+pdf = llpdf.PDFReader().read(args.infile)
 
-	if args.dump_xref_table:
-		pdf.xref_table.dump()
+if args.dump_xref_table:
+	pdf.xref_table.dump()
 
-	pdf_fixup_classes = [ ]
-	for (filter_no, pdf_filter_class) in enumerate(pdf_filter_classes, 1):
-		log.debug("Running filter %d/%d: %s", filter_no, len(pdf_filter_classes), pdf_filter_class.__name__)
-		pdf_filter = pdf_filter_class(pdf, args)
-		pdf_filter.run()
-		if args.verbose:
-			log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
-		if getattr(pdf_filter, "fixup", None) is not None:
-			pdf_fixup_classes.append(pdf_filter)
+pdf_fixup_classes = [ ]
+for (filter_no, pdf_filter_class) in enumerate(pdf_filter_classes, 1):
+	log.debug("Running filter %d/%d: %s", filter_no, len(pdf_filter_classes), pdf_filter_class.__name__)
+	pdf_filter = pdf_filter_class(pdf, args)
+	pdf_filter.run()
+	if args.verbose:
+		log.debug("%s saved %s." % (pdf_filter_class.__name__, fsf(pdf_filter.bytes_saved)))
+	if getattr(pdf_filter, "fixup", None) is not None:
+		pdf_fixup_classes.append(pdf_filter)
 
-	use_xref_stream = not (args.no_xref_stream or args.pdfa_1b)
-	use_object_streams = not (args.no_object_streams or args.pdfa_1b)
-	writer = llpdf.PDFWriter(pdf, outfile, pretty = args.pretty_pdf, use_xref_stream = use_xref_stream, use_object_streams = use_object_streams)
-	writer.write()
-	outfile.flush()
+use_xref_stream = not (args.no_xref_stream or args.pdfa_1b)
+use_object_streams = not (args.no_object_streams or args.pdfa_1b)
+writer = llpdf.PDFWriter(pretty = args.pretty_pdf, use_xref_stream = use_xref_stream, use_object_streams = use_object_streams)
+writer.write(pdf, args.outfile)
 
-	if len(pdf_fixup_classes) > 0:
-		for (filter_no, pdf_filter) in enumerate(pdf_fixup_classes, 1):
-			log.debug("Running fixup %d/%d: %s", filter_no, len(pdf_fixup_classes), pdf_filter.__class__.__name__)
-			pdf_filter.fixup(writer)
+if len(pdf_fixup_classes) > 0:
+	for (filter_no, pdf_filter) in enumerate(pdf_fixup_classes, 1):
+		log.debug("Running fixup %d/%d: %s", filter_no, len(pdf_fixup_classes), pdf_filter.__class__.__name__)
+		pdf_filter.fixup(writer)
 
 new_size = os.stat(args.outfile).st_size
 if args.verbose:
