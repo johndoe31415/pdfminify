@@ -2,4 +2,7 @@ language: python
 python:
   - 3.5
 
+before_install:
+    - pip3 install llpdf
+
 script: python3 -m llpdf.tests
