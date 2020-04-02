@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #	pdfminify - Tool to minify PDF files.
 #	Copyright (C) 2016-2020 Johannes Bauer
 #
