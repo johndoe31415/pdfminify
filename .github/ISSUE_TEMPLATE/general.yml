@@ -1,0 +1,27 @@
+name: General
+description: File a bug report or feature request
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please note that it is impossible to debug pdfminify without access to the PDF file that caused the issue. Often, it is entirely unclear if the PDF is just malformed or if it really is an issue with pdfminify. Please attach a PDF or I have no chance of fixing the issue and please also state which version of pdfminify you've been using.
+  - type: textarea
+    id: report
+    attributes:
+      label: What is the issue?
+      description: Please describe the issue, command line, version used and attach a test PDF.
+      placeholder: Please describe the issue, command line, version used and attach a test PDF.
+    validations:
+      required: true
+  - type: checkboxes
+    id: attachment
+    attributes:
+      label: All Info Provided
+      description: Only with a PDF to reproduce the error is any bugfinding possible. Make sure you attach one.
+      options:
+        - label: I have described the exact command line I was using
+          required: true
+        - label: I have included the version number of pdfminify I'm using
+          required: true
+        - label: I have attached an example PDF that exhibits the issue
+          required: true
