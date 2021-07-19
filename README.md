@@ -1,5 +1,5 @@
 # pdfminify
-[![Build Status](https://travis-ci.org/johndoe31415/pdfminify.svg?branch=master)](https://travis-ci.org/johndoe31415/pdfminify)
+[![Build Status](https://travis-ci.com/johndoe31415/pdfminify.svg?branch=master)](https://travis-ci.com/johndoe31415/pdfminify)
 
 
 pdfminify is intended to re-compress PDF images while operating directly at PDF
