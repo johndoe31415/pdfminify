@@ -1,5 +1,5 @@
 #	pdfminify - Tool to minify PDF files.
-#	Copyright (C) 2016-2020 Johannes Bauer
+#	Copyright (C) 2016-2024 Johannes Bauer
 #
 #	This file is part of pdfminify.
 #
@@ -19,6 +19,4 @@
 #
 #	Johannes Bauer <JohannesBauer@gmx.de>
 
-VERSION_TUPLE = (0, 2, 1)
-VERSION_INT = sum(value << (pos * 8) for (pos, value) in enumerate(reversed(VERSION_TUPLE)))
-VERSION = "%d.%d.%d" % VERSION_TUPLE
+VERSION = "0.2.2"
